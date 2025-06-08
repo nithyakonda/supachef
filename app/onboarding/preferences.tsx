@@ -1,0 +1,513 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import Button from '@/components/ui/Button';
+import Chip from '@/components/ui/Chip';
+import { cuisineOptions, dietaryRestrictions, mealTypes, weekDays } from '@/data/sampleData';
+
+const PREFERENCE_STEPS = [
+  'cuisines',
+  'dietary',
+  'mealTypes',
+  'experience',
+  'household',
+  'planning'
+];
+
+export default function PreferencesScreen() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [preferences, setPreferences] = useState({
+    cuisines: [] as string[],
+    dietary: [] as string[],
+    mealTypes: [] as string[],
+    experience: '',
+    needsLunchbox: false,
+    prefersLeftovers: false,
+    adults: 2,
+    kids: 0,
+    planningDays: [] as string[],
+  });
+
+  const handleNext = () => {
+    if (currentStep < PREFERENCE_STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      router.push('/onboarding/complete');
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    } else {
+      router.back();
+    }
+  };
+
+  const toggleSelection = (category: string, item: string) => {
+    setPreferences(prev => ({
+      ...prev,
+      [category]: prev[category as keyof typeof prev].includes(item)
+        ? (prev[category as keyof typeof prev] as string[]).filter(i => i !== item)
+        : [...(prev[category as keyof typeof prev] as string[]), item]
+    }));
+  };
+
+  const updatePreference = (key: string, value: any) => {
+    setPreferences(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const renderProgressDots = () => (
+    <View style={styles.progressContainer}>
+      {PREFERENCE_STEPS.map((_, index) => (
+        <View
+          key={index}
+          style={[
+            styles.progressDot,
+            index === currentStep && styles.activeDot,
+            index < currentStep && styles.completedDot,
+          ]}
+        />
+      ))}
+    </View>
+  );
+
+  const renderCuisineStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Which cuisines do you love?</Text>
+      <Text style={styles.stepSubtitle}>Select all that apply</Text>
+      
+      <View style={styles.chipsContainer}>
+        {cuisineOptions.map(cuisine => (
+          <Chip
+            key={cuisine}
+            label={cuisine}
+            selected={preferences.cuisines.includes(cuisine)}
+            onPress={() => toggleSelection('cuisines', cuisine)}
+          />
+        ))}
+        <Chip
+          label="+ Add New"
+          selected={false}
+          onPress={() => {}}
+          style={styles.addNewChip}
+        />
+      </View>
+    </View>
+  );
+
+  const renderDietaryStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Any dietary restrictions?</Text>
+      <Text style={styles.stepSubtitle}>Select all that apply</Text>
+      
+      <View style={styles.chipsContainer}>
+        {dietaryRestrictions.map(restriction => (
+          <Chip
+            key={restriction}
+            label={restriction}
+            selected={preferences.dietary.includes(restriction)}
+            onPress={() => toggleSelection('dietary', restriction)}
+          />
+        ))}
+        <Chip
+          label="+ Add New"
+          selected={false}
+          onPress={() => {}}
+          style={styles.addNewChip}
+        />
+      </View>
+    </View>
+  );
+
+  const renderMealTypesStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Which meals do you want to plan?</Text>
+      <Text style={styles.stepSubtitle}>Select all that apply</Text>
+      
+      <View style={styles.chipsContainer}>
+        {mealTypes.map(type => (
+          <Chip
+            key={type}
+            label={type}
+            selected={preferences.mealTypes.includes(type)}
+            onPress={() => toggleSelection('mealTypes', type)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderExperienceStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>What's your cooking experience?</Text>
+      <Text style={styles.stepSubtitle}>This helps us suggest appropriate recipes</Text>
+      
+      <View style={styles.radioContainer}>
+        {['Beginner', 'Intermediate', 'Expert'].map(level => (
+          <TouchableOpacity
+            key={level}
+            style={[
+              styles.radioOption,
+              preferences.experience === level && styles.selectedRadio
+            ]}
+            onPress={() => updatePreference('experience', level)}
+          >
+            <View style={[
+              styles.radioCircle,
+              preferences.experience === level && styles.selectedCircle
+            ]} />
+            <Text style={[
+              styles.radioText,
+              preferences.experience === level && styles.selectedRadioText
+            ]}>
+              {level}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderHouseholdStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Tell us about your household</Text>
+      <Text style={styles.stepSubtitle}>This helps us plan portion sizes</Text>
+      
+      <View style={styles.counterContainer}>
+        <View style={styles.counterItem}>
+          <Text style={styles.counterLabel}>Number of adults</Text>
+          <View style={styles.counter}>
+            <TouchableOpacity
+              style={styles.counterButton}
+              onPress={() => updatePreference('adults', Math.max(1, preferences.adults - 1))}
+            >
+              <Text style={styles.counterButtonText}>−</Text>
+            </TouchableOpacity>
+            <Text style={styles.counterValue}>{preferences.adults}</Text>
+            <TouchableOpacity
+              style={styles.counterButton}
+              onPress={() => updatePreference('adults', preferences.adults + 1)}
+            >
+              <Text style={styles.counterButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.counterItem}>
+          <Text style={styles.counterLabel}>Number of kids</Text>
+          <View style={styles.counter}>
+            <TouchableOpacity
+              style={styles.counterButton}
+              onPress={() => updatePreference('kids', Math.max(0, preferences.kids - 1))}
+            >
+              <Text style={styles.counterButtonText}>−</Text>
+            </TouchableOpacity>
+            <Text style={styles.counterValue}>{preferences.kids}</Text>
+            <TouchableOpacity
+              style={styles.counterButton}
+              onPress={() => updatePreference('kids', preferences.kids + 1)}
+            >
+              <Text style={styles.counterButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.toggleOption,
+            preferences.needsLunchbox && styles.selectedToggle
+          ]}
+          onPress={() => updatePreference('needsLunchbox', !preferences.needsLunchbox)}
+        >
+          <Text style={[
+            styles.toggleText,
+            preferences.needsLunchbox && styles.selectedToggleText
+          ]}>
+            Need lunchbox meals? {preferences.needsLunchbox ? 'Yes' : 'No'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.toggleOption,
+            preferences.prefersLeftovers && styles.selectedToggle
+          ]}
+          onPress={() => updatePreference('prefersLeftovers', !preferences.prefersLeftovers)}
+        >
+          <Text style={[
+            styles.toggleText,
+            preferences.prefersLeftovers && styles.selectedToggleText
+          ]}>
+            Prefer leftovers? {preferences.prefersLeftovers ? 'Yes' : 'No'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderPlanningStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Which days do you want to plan?</Text>
+      <Text style={styles.stepSubtitle}>Select your meal planning days</Text>
+      
+      <View style={styles.chipsContainer}>
+        {weekDays.map(day => (
+          <Chip
+            key={day}
+            label={day}
+            selected={preferences.planningDays.includes(day)}
+            onPress={() => toggleSelection('planningDays', day)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderCurrentStep = () => {
+    switch (PREFERENCE_STEPS[currentStep]) {
+      case 'cuisines':
+        return renderCuisineStep();
+      case 'dietary':
+        return renderDietaryStep();
+      case 'mealTypes':
+        return renderMealTypesStep();
+      case 'experience':
+        return renderExperienceStep();
+      case 'household':
+        return renderHouseholdStep();
+      case 'planning':
+        return renderPlanningStep();
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ChevronLeft size={24} color="#6B7280" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Preferences</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      {renderProgressDots()}
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {renderCurrentStep()}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <Button
+          title={currentStep === PREFERENCE_STEPS.length - 1 ? 'Complete Setup' : 'Next'}
+          onPress={handleNext}
+          variant="primary"
+          size="large"
+          style={styles.nextButton}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+  },
+  placeholder: {
+    width: 40,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 32,
+    gap: 8,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E5E7EB',
+  },
+  activeDot: {
+    backgroundColor: '#F97966',
+  },
+  completedDot: {
+    backgroundColor: '#10B981',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+  },
+  stepContent: {
+    paddingBottom: 32,
+  },
+  stepTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  stepSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 32,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  addNewChip: {
+    borderStyle: 'dashed',
+  },
+  radioContainer: {
+    gap: 16,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  selectedRadio: {
+    borderColor: '#F97966',
+    backgroundColor: '#FEF3F2',
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    marginRight: 12,
+  },
+  selectedCircle: {
+    borderColor: '#F97966',
+    backgroundColor: '#F97966',
+  },
+  radioText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  selectedRadioText: {
+    color: '#F97966',
+    fontFamily: 'Inter-SemiBold',
+  },
+  counterContainer: {
+    gap: 24,
+    marginBottom: 32,
+  },
+  counterItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  counterLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+  },
+  counter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
+  },
+  counterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterButtonText: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+  },
+  counterValue: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginHorizontal: 16,
+    minWidth: 24,
+    textAlign: 'center',
+  },
+  toggleContainer: {
+    gap: 16,
+  },
+  toggleOption: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  selectedToggle: {
+    borderColor: '#F97966',
+    backgroundColor: '#FEF3F2',
+  },
+  toggleText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  selectedToggleText: {
+    color: '#F97966',
+    fontFamily: 'Inter-SemiBold',
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  nextButton: {
+    width: '100%',
+  },
+});
