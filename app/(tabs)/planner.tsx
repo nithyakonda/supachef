@@ -216,7 +216,7 @@ export default function PlannerScreen() {
           title="Submit to AI Sous-Chef"
           onPress={handleSubmitToAI}
           variant="primary"
-          size="small"
+          size="large"
           style={styles.submitButton}
         />
       </View>
