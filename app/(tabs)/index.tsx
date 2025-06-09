@@ -95,6 +95,7 @@ export default function HomeScreen() {
 
   const selectedPlan = sampleWeeklyMealPlans[selectedDayIndex];
   const selectedDate = selectedPlan.date;
+  const isViewingToday = selectedDayIndex === todayIndex;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -160,15 +161,16 @@ export default function HomeScreen() {
             </TouchableOpacity>
             
             <View style={styles.dailyMealsTitle}>
-              <Text style={styles.dailyMealsDate}>
-                {selectedDate.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </Text>
-              {selectedDayIndex === todayIndex && (
-                <Text style={styles.todayLabel}>Today</Text>
+              {isViewingToday ? (
+                <Text style={styles.todayTitle}>Today</Text>
+              ) : (
+                <Text style={styles.dailyMealsDate}>
+                  {selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </Text>
               )}
             </View>
             
@@ -361,15 +363,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: '#111827',
   },
-  todayLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
+  todayTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
     color: '#F97966',
-    backgroundColor: '#FEF3F2',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 4,
   },
   mealsScrollView: {
     flex: 1,
