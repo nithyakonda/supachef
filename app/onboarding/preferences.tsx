@@ -19,6 +19,7 @@ import { cuisineOptions, dietaryRestrictions, mealTypes, weekDays } from '@/data
 const PREFERENCE_STEPS = [
   'cuisines',
   'dietary',
+  'allergies',
   'mealTypes',
   'experience',
   'household',
@@ -33,10 +34,12 @@ export default function PreferencesScreen() {
   const [customOptions, setCustomOptions] = useState({
     cuisines: [] as string[],
     dietary: [] as string[],
+    allergies: [] as string[],
   });
   const [preferences, setPreferences] = useState({
     cuisines: [] as string[],
     dietary: [] as string[],
+    allergies: ['None'] as string[], // Default to None
     mealTypes: ['Breakfast', 'Lunch', 'Dinner'] as string[], // Default selection
     experience: 'Intermediate', // Default selection
     needsLunchbox: false,
@@ -63,12 +66,36 @@ export default function PreferencesScreen() {
   };
 
   const toggleSelection = (category: string, item: string) => {
-    setPreferences(prev => ({
-      ...prev,
-      [category]: prev[category as keyof typeof prev].includes(item)
-        ? (prev[category as keyof typeof prev] as string[]).filter(i => i !== item)
-        : [...(prev[category as keyof typeof prev] as string[]), item]
-    }));
+    setPreferences(prev => {
+      const currentSelections = prev[category as keyof typeof prev] as string[];
+      
+      if (item === 'None') {
+        // If selecting 'None', clear all other selections
+        return {
+          ...prev,
+          [category]: ['None']
+        };
+      } else {
+        // If selecting any other option, remove 'None' and toggle the option
+        let newSelections = currentSelections.filter(i => i !== 'None');
+        
+        if (newSelections.includes(item)) {
+          newSelections = newSelections.filter(i => i !== item);
+        } else {
+          newSelections.push(item);
+        }
+        
+        // If no selections remain, add 'None' back
+        if (newSelections.length === 0) {
+          newSelections = ['None'];
+        }
+        
+        return {
+          ...prev,
+          [category]: newSelections
+        };
+      }
+    });
   };
 
   const updatePreference = (key: string, value: any) => {
@@ -93,9 +120,14 @@ export default function PreferencesScreen() {
     const trimmedText = newItemText.trim();
     
     // Check if item already exists
-    const existingOptions = addingToCategory === 'cuisines' 
-      ? [...cuisineOptions, ...customOptions.cuisines]
-      : [...dietaryRestrictions, ...customOptions.dietary];
+    let existingOptions: string[] = [];
+    if (addingToCategory === 'cuisines') {
+      existingOptions = [...cuisineOptions, ...customOptions.cuisines];
+    } else if (addingToCategory === 'dietary') {
+      existingOptions = [...dietaryRestrictions, ...customOptions.dietary];
+    } else if (addingToCategory === 'allergies') {
+      existingOptions = ['None', 'Nuts', 'Shellfish', 'Dairy', 'Eggs', 'Soy', 'Gluten', 'Fish', ...customOptions.allergies];
+    }
     
     if (existingOptions.some(option => option.toLowerCase() === trimmedText.toLowerCase())) {
       Alert.alert('Error', 'This option already exists');
@@ -128,6 +160,8 @@ export default function PreferencesScreen() {
       return [...cuisineOptions, ...customOptions.cuisines];
     } else if (category === 'dietary') {
       return [...dietaryRestrictions, ...customOptions.dietary];
+    } else if (category === 'allergies') {
+      return ['None', 'Nuts', 'Shellfish', 'Dairy', 'Eggs', 'Soy', 'Gluten', 'Fish', ...customOptions.allergies];
     }
     return [];
   };
@@ -191,6 +225,33 @@ export default function PreferencesScreen() {
         <TouchableOpacity
           style={styles.addNewChip}
           onPress={() => openAddModal('dietary')}
+        >
+          <View style={styles.addNewContent}>
+            <Plus size={16} color="#6B7280" />
+            <Text style={styles.addNewText}>Add New</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderAllergiesStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Do you have any allergies?</Text>
+      <Text style={styles.stepSubtitle}>Select all that apply, or choose "None" if you don't have any allergies</Text>
+      
+      <View style={styles.chipsContainer}>
+        {getAllOptions('allergies').map(allergy => (
+          <Chip
+            key={allergy}
+            label={allergy}
+            selected={preferences.allergies.includes(allergy)}
+            onPress={() => toggleSelection('allergies', allergy)}
+          />
+        ))}
+        <TouchableOpacity
+          style={styles.addNewChip}
+          onPress={() => openAddModal('allergies')}
         >
           <View style={styles.addNewContent}>
             <Plus size={16} color="#6B7280" />
@@ -353,6 +414,8 @@ export default function PreferencesScreen() {
         return renderCuisineStep();
       case 'dietary':
         return renderDietaryStep();
+      case 'allergies':
+        return renderAllergiesStep();
       case 'mealTypes':
         return renderMealTypesStep();
       case 'experience':
@@ -377,7 +440,7 @@ export default function PreferencesScreen() {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              Add New {addingToCategory === 'cuisines' ? 'Cuisine' : 'Dietary Restriction'}
+              Add New {addingToCategory === 'cuisines' ? 'Cuisine' : addingToCategory === 'dietary' ? 'Dietary Restriction' : 'Allergy'}
             </Text>
             <TouchableOpacity onPress={closeAddModal} style={styles.closeButton}>
               <X size={24} color="#6B7280" />
@@ -386,7 +449,7 @@ export default function PreferencesScreen() {
           
           <TextInput
             style={styles.modalInput}
-            placeholder={`Enter ${addingToCategory === 'cuisines' ? 'cuisine name' : 'dietary restriction'}`}
+            placeholder={`Enter ${addingToCategory === 'cuisines' ? 'cuisine name' : addingToCategory === 'dietary' ? 'dietary restriction' : 'allergy'}`}
             value={newItemText}
             onChangeText={setNewItemText}
             autoFocus={true}
