@@ -37,8 +37,8 @@ export default function PreferencesScreen() {
   const [preferences, setPreferences] = useState({
     cuisines: [] as string[],
     dietary: [] as string[],
-    mealTypes: [] as string[],
-    experience: '',
+    mealTypes: ['Breakfast', 'Lunch', 'Dinner'] as string[], // Default selection
+    experience: 'Intermediate', // Default selection
     needsLunchbox: false,
     prefersLeftovers: false,
     adults: 2,
@@ -204,7 +204,7 @@ export default function PreferencesScreen() {
   const renderMealTypesStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Which meals do you want to plan?</Text>
-      <Text style={styles.stepSubtitle}>Select all that apply</Text>
+      <Text style={styles.stepSubtitle}>Breakfast, Lunch, and Dinner are selected by default</Text>
       
       <View style={styles.chipsContainer}>
         {mealTypes.map(type => (
