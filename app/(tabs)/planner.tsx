@@ -14,13 +14,14 @@ import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
+import { weekDays, mealTypes, dietaryRestrictions } from '@/data/sampleData';
 
 interface PreferenceModalProps {
   visible: boolean;
   title: string;
   type: 'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies';
-  currentValue: string;
-  onSave: (value: string) => void;
+  currentValue: string[];
+  onSave: (value: string[]) => void;
   onClose: () => void;
 }
 
@@ -32,26 +33,40 @@ const PreferenceModal: React.FC<PreferenceModalProps> = ({
   onSave,
   onClose,
 }) => {
-  const [selectedValue, setSelectedValue] = useState(currentValue);
+  const [selectedValue, setSelectedValue] = useState<string[]>(currentValue);
   const [customInput, setCustomInput] = useState('');
 
-  const getOptions = () => {
+  const options = React.useMemo(() => {
     switch (type) {
       case 'currentWeek':
-        return ['7 days', '5 days (weekdays)', '6 days (no Sunday)', '3 days'];
+        return weekDays;
       case 'mealsPerDay':
-        return ['1 meal per day', '2 meals per day', '3 meals per day', '4 meals per day'];
+        return mealTypes;
       case 'dietaryRestrictions':
-        return ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Keto', 'Paleo', 'Low-Carb'];
+        return [...dietaryRestrictions, 'None'];
       case 'allergies':
         return ['None', 'Nuts', 'Shellfish', 'Dairy', 'Eggs', 'Soy', 'Gluten', 'Fish'];
       default:
         return [];
     }
-  };
+  }, [type]);
+
+  const allowsMultiple = ['currentWeek', 'mealsPerDay', 'dietaryRestrictions', 'allergies'].includes(type);
+  const allowsCustom = type === 'dietaryRestrictions' || type === 'allergies';
 
   const handleSave = () => {
-    const valueToSave = customInput.trim() || selectedValue;
+    let valueToSave = [...selectedValue];
+    
+    // Add custom input if provided for dietary restrictions or allergies
+    if (customInput.trim() && allowsCustom) {
+      const trimmedInput = customInput.trim();
+      if (!valueToSave.includes(trimmedInput)) {
+        // Remove 'None' if adding custom item
+        valueToSave = valueToSave.filter(item => item !== 'None');
+        valueToSave.push(trimmedInput);
+      }
+    }
+    
     onSave(valueToSave);
     setCustomInput('');
     onClose();
@@ -63,9 +78,28 @@ const PreferenceModal: React.FC<PreferenceModalProps> = ({
     onClose();
   };
 
-  const options = getOptions();
-  const allowsMultiple = type === 'dietaryRestrictions' || type === 'allergies';
-  const allowsCustom = type === 'dietaryRestrictions' || type === 'allergies';
+  const toggleSelection = (option: string) => {
+    if (option === 'None') {
+      // If selecting 'None', clear all other selections
+      setSelectedValue(['None']);
+    } else {
+      // If selecting any other option, remove 'None' and toggle the option
+      let newSelections = selectedValue.filter(item => item !== 'None');
+      
+      if (newSelections.includes(option)) {
+        newSelections = newSelections.filter(item => item !== option);
+      } else {
+        newSelections.push(option);
+      }
+      
+      // If no selections remain, add 'None' back
+      if (newSelections.length === 0) {
+        newSelections = ['None'];
+      }
+      
+      setSelectedValue(newSelections);
+    }
+  };
 
   return (
     <Modal
@@ -84,55 +118,16 @@ const PreferenceModal: React.FC<PreferenceModalProps> = ({
           </View>
 
           <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
-            {allowsMultiple ? (
-              <View style={styles.chipsContainer}>
-                {options.map((option) => (
-                  <Chip
-                    key={option}
-                    label={option}
-                    selected={selectedValue.includes(option)}
-                    onPress={() => {
-                      if (option === 'None') {
-                        setSelectedValue('None');
-                      } else {
-                        const currentSelections = selectedValue === 'None' ? [] : selectedValue.split(', ');
-                        if (currentSelections.includes(option)) {
-                          const newSelections = currentSelections.filter(item => item !== option);
-                          setSelectedValue(newSelections.length > 0 ? newSelections.join(', ') : 'None');
-                        } else {
-                          const newSelections = [...currentSelections.filter(item => item !== 'None'), option];
-                          setSelectedValue(newSelections.join(', '));
-                        }
-                      }
-                    }}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.optionsContainer}>
-                {options.map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={[
-                      styles.optionItem,
-                      selectedValue === option && styles.selectedOption
-                    ]}
-                    onPress={() => setSelectedValue(option)}
-                  >
-                    <View style={[
-                      styles.radioCircle,
-                      selectedValue === option && styles.selectedCircle
-                    ]} />
-                    <Text style={[
-                      styles.optionText,
-                      selectedValue === option && styles.selectedOptionText
-                    ]}>
-                      {option}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <View style={styles.chipsContainer}>
+              {options.map((option) => (
+                <Chip
+                  key={option}
+                  label={option}
+                  selected={selectedValue.includes(option)}
+                  onPress={() => toggleSelection(option)}
+                />
+              ))}
+            </View>
 
             {allowsCustom && (
               <View style={styles.customInputContainer}>
@@ -175,10 +170,10 @@ export default function PlannerScreen() {
   const [showPreferenceModal, setShowPreferenceModal] = useState(false);
   const [editingPreference, setEditingPreference] = useState<'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies' | null>(null);
   const [preferences, setPreferences] = useState({
-    currentWeek: '7 days',
-    mealsPerDay: '3 meals per day',
-    dietaryRestrictions: 'None',
-    allergies: 'None',
+    currentWeek: weekDays, // Initialize with all days
+    mealsPerDay: ['Breakfast', 'Lunch', 'Dinner'], // Initialize with default meals
+    dietaryRestrictions: ['None'] as string[],
+    allergies: ['None'] as string[],
   });
 
   const handleTakePhoto = () => {
@@ -200,7 +195,7 @@ export default function PlannerScreen() {
     setShowPreferenceModal(true);
   };
 
-  const handlePreferenceSave = (value: string) => {
+  const handlePreferenceSave = (value: string[]) => {
     if (editingPreference) {
       setPreferences(prev => ({
         ...prev,
@@ -227,7 +222,7 @@ export default function PlannerScreen() {
   const getPreferenceModalTitle = () => {
     switch (editingPreference) {
       case 'currentWeek':
-        return 'Planning Duration';
+        return 'Planning Days';
       case 'mealsPerDay':
         return 'Meals per Day';
       case 'dietaryRestrictions':
@@ -237,6 +232,14 @@ export default function PlannerScreen() {
       default:
         return '';
     }
+  };
+
+  const getPreferenceSubtitle = (key: keyof typeof preferences) => {
+    const value = preferences[key];
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    return value;
   };
 
   const renderManualEntryModal = () => (
@@ -350,7 +353,7 @@ export default function PlannerScreen() {
             >
               <View style={styles.preferenceContent}>
                 <Text style={styles.preferenceTitle}>Current Week</Text>
-                <Text style={styles.preferenceSubtitle}>{preferences.currentWeek}</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('currentWeek')}</Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
             </TouchableOpacity>
@@ -363,7 +366,7 @@ export default function PlannerScreen() {
             >
               <View style={styles.preferenceContent}>
                 <Text style={styles.preferenceTitle}>Meals per Day</Text>
-                <Text style={styles.preferenceSubtitle}>{preferences.mealsPerDay}</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('mealsPerDay')}</Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
             </TouchableOpacity>
@@ -376,7 +379,7 @@ export default function PlannerScreen() {
             >
               <View style={styles.preferenceContent}>
                 <Text style={styles.preferenceTitle}>Dietary Restrictions</Text>
-                <Text style={styles.preferenceSubtitle}>{preferences.dietaryRestrictions}</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('dietaryRestrictions')}</Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
             </TouchableOpacity>
@@ -389,7 +392,7 @@ export default function PlannerScreen() {
             >
               <View style={styles.preferenceContent}>
                 <Text style={styles.preferenceTitle}>Allergies</Text>
-                <Text style={styles.preferenceSubtitle}>{preferences.allergies}</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('allergies')}</Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
             </TouchableOpacity>
@@ -608,44 +611,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 16,
-  },
-  optionsContainer: {
-    gap: 12,
-    marginBottom: 16,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  selectedOption: {
-    borderColor: '#F97966',
-    backgroundColor: '#FEF3F2',
-  },
-  radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    marginRight: 12,
-  },
-  selectedCircle: {
-    borderColor: '#F97966',
-    backgroundColor: '#F97966',
-  },
-  optionText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-  },
-  selectedOptionText: {
-    color: '#F97966',
-    fontFamily: 'Inter-SemiBold',
   },
   customInputContainer: {
     marginTop: 16,
