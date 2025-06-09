@@ -55,10 +55,6 @@ export default function CompleteScreen() {
             <Text style={styles.featureText}>Save recipes from any link or social media</Text>
           </View>
           <View style={styles.featureItem}>
-            <Text style={styles.featureEmoji}>🛒</Text>
-            <Text style={styles.featureText}>Auto-generated shopping lists</Text>
-          </View>
-          <View style={styles.featureItem}>
             <Text style={styles.featureEmoji}>🤖</Text>
             <Text style={styles.featureText}>AI-powered recipe suggestions</Text>
           </View>

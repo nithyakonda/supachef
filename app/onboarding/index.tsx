@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Image,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -17,13 +18,22 @@ export default function OnboardingScreen() {
     router.push('/onboarding/welcome');
   };
 
+  const handleSignIn = () => {
+    // Navigate to the welcome screen with login mode
+    router.push('/onboarding/welcome?mode=login');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Logo/Icon */}
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
-            <Text style={styles.logoText}>👨‍🍳</Text>
+            <Image
+              source={require('@/assets/images/app_icon_android.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.appName}>SupaChef</Text>
         </View>
@@ -53,10 +63,12 @@ export default function OnboardingScreen() {
             size="large"
             style={styles.getStartedButton}
           />
-          <Text style={styles.loginText}>
-            Already have an account?{' '}
-            <Text style={styles.loginLink}>Sign In</Text>
-          </Text>
+          <TouchableOpacity onPress={handleSignIn}>
+            <Text style={styles.loginText}>
+              Already have an account?{' '}
+              <Text style={styles.loginLink}>Sign In</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -78,16 +90,15 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FEF3F2',
+    width: 100,
+    height: 100,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  logoText: {
-    fontSize: 36,
+  logoImage: {
+    width: 100,
+    height: 100,
   },
   appName: {
     fontSize: 28,
