@@ -5,241 +5,449 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Camera, X } from 'lucide-react-native';
+import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { sampleMealPlan } from '@/data/sampleData';
+import Chip from '@/components/ui/Chip';
+import { weekDays, mealTypes, dietaryRestrictions } from '@/data/sampleData';
 
-export default function PlannerScreen() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showAISuggestions, setShowAISuggestions] = useState(false);
+interface PreferenceModalProps {
+  visible: boolean;
+  title: string;
+  type: 'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies';
+  currentValue: string[];
+  onSave: (value: string[]) => void;
+  onClose: () => void;
+}
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  
-  const getWeekDates = (date: Date) => {
-    const week = [];
-    const startOfWeek = new Date(date);
-    startOfWeek.setDate(date.getDate() - date.getDay());
-    
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      week.push(day);
+const PreferenceModal: React.FC<PreferenceModalProps> = ({
+  visible,
+  title,
+  type,
+  currentValue,
+  onSave,
+  onClose,
+}) => {
+  const [selectedValue, setSelectedValue] = useState<string[]>(currentValue);
+  const [customInput, setCustomInput] = useState('');
+
+  const options = React.useMemo(() => {
+    switch (type) {
+      case 'currentWeek':
+        return weekDays;
+      case 'mealsPerDay':
+        return mealTypes;
+      case 'dietaryRestrictions':
+        return [...dietaryRestrictions, 'None'];
+      case 'allergies':
+        return ['None', 'Nuts', 'Shellfish', 'Dairy', 'Eggs', 'Soy', 'Gluten', 'Fish'];
+      default:
+        return [];
     }
-    return week;
+  }, [type]);
+
+  const allowsMultiple = ['currentWeek', 'mealsPerDay', 'dietaryRestrictions', 'allergies'].includes(type);
+  const allowsCustom = type === 'dietaryRestrictions' || type === 'allergies';
+
+  const handleSave = () => {
+    let valueToSave = [...selectedValue];
+    
+    // Add custom input if provided for dietary restrictions or allergies
+    if (customInput.trim() && allowsCustom) {
+      const trimmedInput = customInput.trim();
+      if (!valueToSave.includes(trimmedInput)) {
+        // Remove 'None' if adding custom item
+        valueToSave = valueToSave.filter(item => item !== 'None');
+        valueToSave.push(trimmedInput);
+      }
+    }
+    
+    onSave(valueToSave);
+    setCustomInput('');
+    onClose();
   };
 
-  const weekDates = getWeekDates(selectedDate);
+  const handleClose = () => {
+    setSelectedValue(currentValue);
+    setCustomInput('');
+    onClose();
+  };
 
-  const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric',
+  const toggleSelection = (option: string) => {
+    if (option === 'None') {
+      // If selecting 'None', clear all other selections
+      setSelectedValue(['None']);
+    } else {
+      // If selecting any other option, remove 'None' and toggle the option
+      let newSelections = selectedValue.filter(item => item !== 'None');
+      
+      if (newSelections.includes(option)) {
+        newSelections = newSelections.filter(item => item !== option);
+      } else {
+        newSelections.push(option);
+      }
+      
+      // If no selections remain, add 'None' back
+      if (newSelections.length === 0) {
+        newSelections = ['None'];
+      }
+      
+      setSelectedValue(newSelections);
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={handleClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.chipsContainer}>
+              {options.map((option) => (
+                <Chip
+                  key={option}
+                  label={option}
+                  selected={selectedValue.includes(option)}
+                  onPress={() => toggleSelection(option)}
+                />
+              ))}
+            </View>
+
+            {allowsCustom && (
+              <View style={styles.customInputContainer}>
+                <Text style={styles.customInputLabel}>Or add custom:</Text>
+                <TextInput
+                  style={styles.customInput}
+                  placeholder="Type custom option..."
+                  value={customInput}
+                  onChangeText={setCustomInput}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <Button
+              title="Cancel"
+              onPress={handleClose}
+              variant="outline"
+              style={styles.modalButton}
+            />
+            <Button
+              title="Save"
+              onPress={handleSave}
+              variant="primary"
+              style={styles.modalButton}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+export default function PlannerScreen() {
+  const [ingredientMethod, setIngredientMethod] = useState<'photo' | 'manual'>('photo');
+  const [manualIngredients, setManualIngredients] = useState('');
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [showPreferenceModal, setShowPreferenceModal] = useState(false);
+  const [editingPreference, setEditingPreference] = useState<'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies' | null>(null);
+  const [preferences, setPreferences] = useState({
+    currentWeek: weekDays, // Initialize with all days
+    mealsPerDay: ['Breakfast', 'Lunch', 'Dinner'], // Initialize with default meals
+    dietaryRestrictions: ['None'] as string[],
+    allergies: ['None'] as string[],
+  });
+
+  const handleTakePhoto = () => {
+    // Stub implementation - would open camera
+    console.log('Opening camera for ingredient detection...');
+  };
+
+  const handleManualEntry = () => {
+    setShowManualEntry(true);
+  };
+
+  const handleSaveManualEntry = () => {
+    setShowManualEntry(false);
+    console.log('Manual ingredients saved:', manualIngredients);
+  };
+
+  const handlePreferenceEdit = (key: 'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies') => {
+    setEditingPreference(key);
+    setShowPreferenceModal(true);
+  };
+
+  const handlePreferenceSave = (value: string[]) => {
+    if (editingPreference) {
+      setPreferences(prev => ({
+        ...prev,
+        [editingPreference]: value
+      }));
+    }
+    setShowPreferenceModal(false);
+    setEditingPreference(null);
+  };
+
+  const handlePreferenceModalClose = () => {
+    setShowPreferenceModal(false);
+    setEditingPreference(null);
+  };
+
+  const handleSubmitToAI = () => {
+    // Stub implementation - would generate meal plan
+    console.log('Submitting to AI Sous-Chef with:', {
+      ingredients: manualIngredients,
+      preferences,
     });
   };
 
-  const isSameDay = (date1: Date, date2: Date) => {
-    return date1.toDateString() === date2.toDateString();
-  };
-
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() + (direction === 'next' ? 7 : -7));
-    setSelectedDate(newDate);
-  };
-
-  const getMealIcon = (mealType: string) => {
-    switch (mealType) {
-      case 'breakfast':
-        return '🥞';
-      case 'lunch':
-        return '🥗';
-      case 'dinner':
-        return '🍽️';
-      case 'snack':
-        return '🍎';
+  const getPreferenceModalTitle = () => {
+    switch (editingPreference) {
+      case 'currentWeek':
+        return 'Planning Days';
+      case 'mealsPerDay':
+        return 'Meals per Day';
+      case 'dietaryRestrictions':
+        return 'Dietary Restrictions';
+      case 'allergies':
+        return 'Allergies';
       default:
-        return '🍽️';
+        return '';
     }
   };
+
+  const getPreferenceSubtitle = (key: keyof typeof preferences) => {
+    const value = preferences[key];
+    if (Array.isArray(value)) {
+      // Special handling for currentWeek to show simplified labels
+      if (key === 'currentWeek') {
+        const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const weekends = ['Saturday', 'Sunday'];
+        
+        // Check if all days are selected
+        if (value.length === allDays.length && allDays.every(day => value.includes(day))) {
+          return 'All days';
+        }
+        
+        // Check if only weekdays are selected
+        if (value.length === weekdays.length && weekdays.every(day => value.includes(day)) && !weekends.some(day => value.includes(day))) {
+          return 'Weekdays only';
+        }
+        
+        // Check if only weekends are selected
+        if (value.length === weekends.length && weekends.every(day => value.includes(day)) && !weekdays.some(day => value.includes(day))) {
+          return 'Weekends only';
+        }
+        
+        // Otherwise, show individual days
+        return value.join(', ');
+      }
+      
+      return value.join(', ');
+    }
+    return value;
+  };
+
+  const renderManualEntryModal = () => (
+    <Modal
+      visible={showManualEntry}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowManualEntry(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Ingredients</Text>
+            <TouchableOpacity 
+              onPress={() => setShowManualEntry(false)} 
+              style={styles.closeButton}
+            >
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalSubtitle}>
+            Enter ingredients you have available (e.g., "chicken, rice, broccoli")
+          </Text>
+          
+          <TextInput
+            style={styles.ingredientInput}
+            placeholder="Type your ingredients here..."
+            value={manualIngredients}
+            onChangeText={setManualIngredients}
+            multiline={true}
+            numberOfLines={4}
+            textAlignVertical="top"
+            placeholderTextColor="#9CA3AF"
+          />
+          
+          <View style={styles.modalActions}>
+            <Button
+              title="Cancel"
+              onPress={() => setShowManualEntry(false)}
+              variant="outline"
+              style={styles.modalButton}
+            />
+            <Button
+              title="Save"
+              onPress={handleSaveManualEntry}
+              variant="primary"
+              style={styles.modalButton}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={styles.backButton}
+          >
+            <ChevronLeft size={24} color="#6B7280" />
+          </TouchableOpacity>
           <Text style={styles.title}>Meal Planner</Text>
-          <TouchableOpacity 
-            style={styles.aiButton}
-            onPress={() => setShowAISuggestions(true)}
-          >
-            <Sparkles size={20} color="#F97966" />
-          </TouchableOpacity>
+          <View style={styles.placeholder} />
         </View>
 
-        {/* Calendar Navigation */}
-        <View style={styles.calendarHeader}>
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigateWeek('prev')}
-          >
-            <ChevronLeft size={20} color="#6B7280" />
-          </TouchableOpacity>
+        {/* Add Ingredients Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Add Ingredients</Text>
           
-          <Text style={styles.monthYear}>
-            {formatMonthYear(selectedDate)}
-          </Text>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigateWeek('next')}
-          >
-            <ChevronRight size={20} color="#6B7280" />
-          </TouchableOpacity>
+          <View style={styles.ingredientButtons}>
+            <Button
+              title="Take a Photo"
+              onPress={handleTakePhoto}
+              variant="primary"
+              style={[styles.ingredientButton, styles.photoButton]}
+              textStyle={styles.photoButtonText}
+            />
+            <Button
+              title="Manual Entry"
+              onPress={handleManualEntry}
+              variant="outline"
+              style={[styles.ingredientButton, styles.manualButton]}
+              textStyle={styles.manualButtonText}
+            />
+          </View>
+
+          {manualIngredients ? (
+            <Card style={styles.ingredientsPreview}>
+              <Text style={styles.ingredientsLabel}>Your Ingredients:</Text>
+              <Text style={styles.ingredientsText}>{manualIngredients}</Text>
+              <TouchableOpacity onPress={handleManualEntry}>
+                <Text style={styles.editText}>Edit</Text>
+              </TouchableOpacity>
+            </Card>
+          ) : null}
         </View>
 
-        {/* Week Calendar */}
-        <View style={styles.weekContainer}>
-          {weekDates.map((date, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.dayButton,
-                isSameDay(date, selectedDate) && styles.selectedDay,
-              ]}
-              onPress={() => setSelectedDate(date)}
+        {/* Default Preferences Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Default Preferences</Text>
+          
+          <Card style={styles.preferencesCard}>
+            <TouchableOpacity 
+              style={styles.preferenceItem}
+              onPress={() => handlePreferenceEdit('currentWeek')}
             >
-              <Text style={[
-                styles.dayName,
-                isSameDay(date, selectedDate) && styles.selectedDayText,
-              ]}>
-                {weekDays[index]}
-              </Text>
-              <Text style={[
-                styles.dayNumber,
-                isSameDay(date, selectedDate) && styles.selectedDayText,
-              ]}>
-                {date.getDate()}
-              </Text>
+              <View style={styles.preferenceContent}>
+                <Text style={styles.preferenceTitle}>Current Week</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('currentWeek')}</Text>
+              </View>
+              <ChevronRight size={20} color="#9CA3AF" />
             </TouchableOpacity>
-          ))}
-        </View>
 
-        {/* Daily Meal Plan */}
-        <View style={styles.dailyPlanContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {selectedDate.toLocaleDateString('en-US', { 
-                weekday: 'long',
-                month: 'short',
-                day: 'numeric'
-              })}
-            </Text>
-            <TouchableOpacity>
-              <Plus size={20} color="#F97966" />
+            <View style={styles.preferenceDivider} />
+
+            <TouchableOpacity 
+              style={styles.preferenceItem}
+              onPress={() => handlePreferenceEdit('mealsPerDay')}
+            >
+              <View style={styles.preferenceContent}>
+                <Text style={styles.preferenceTitle}>Meals per Day</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('mealsPerDay')}</Text>
+              </View>
+              <ChevronRight size={20} color="#9CA3AF" />
             </TouchableOpacity>
-          </View>
 
-          {sampleMealPlan.meals.map((meal) => (
-            <Card key={meal.id} style={styles.mealCard}>
-              <View style={styles.mealContent}>
-                <View style={styles.mealHeader}>
-                  <View style={styles.mealInfo}>
-                    <Text style={styles.mealEmoji}>{getMealIcon(meal.type)}</Text>
-                    <Text style={styles.mealType}>
-                      {meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}
-                    </Text>
-                  </View>
-                  {meal.time && (
-                    <Text style={styles.mealTime}>{meal.time}</Text>
-                  )}
-                </View>
+            <View style={styles.preferenceDivider} />
 
-                {meal.recipe ? (
-                  <View style={styles.recipePreview}>
-                    <Image
-                      source={{ uri: meal.recipe.imageUrl }}
-                      style={styles.recipeImage}
-                    />
-                    <View style={styles.recipeInfo}>
-                      <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
-                      <Text style={styles.recipeDetails}>
-                        {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.addMealButton}>
-                    <Plus size={16} color="#9CA3AF" />
-                    <Text style={styles.addMealText}>Add meal</Text>
-                  </TouchableOpacity>
-                )}
+            <TouchableOpacity 
+              style={styles.preferenceItem}
+              onPress={() => handlePreferenceEdit('dietaryRestrictions')}
+            >
+              <View style={styles.preferenceContent}>
+                <Text style={styles.preferenceTitle}>Dietary Restrictions</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('dietaryRestrictions')}</Text>
               </View>
-            </Card>
-          ))}
-        </View>
+              <ChevronRight size={20} color="#9CA3AF" />
+            </TouchableOpacity>
 
-        {/* AI Suggestions */}
-        {showAISuggestions && (
-          <View style={styles.aiSuggestionsContainer}>
-            <Card style={styles.aiSuggestionsCard}>
-              <View style={styles.aiHeader}>
-                <Sparkles size={20} color="#F97966" />
-                <Text style={styles.aiTitle}>AI Sous-Chef Suggestions</Text>
-              </View>
-              <Text style={styles.aiDescription}>
-                Based on your preferences and available ingredients, here are some meal suggestions for this week:
-              </Text>
-              
-              <View style={styles.suggestionsList}>
-                <Text style={styles.suggestionItem}>
-                  • Mediterranean Bowl for lunch
-                </Text>
-                <Text style={styles.suggestionItem}>
-                  • Butternut Soup for dinner
-                </Text>
-                <Text style={styles.suggestionItem}>
-                  • Avocado Toast for breakfast
-                </Text>
-              </View>
+            <View style={styles.preferenceDivider} />
 
-              <View style={styles.aiActions}>
-                <Button
-                  title="Apply Suggestions"
-                  onPress={() => setShowAISuggestions(false)}
-                  variant="primary"
-                  size="small"
-                />
-                <Button
-                  title="Dismiss"
-                  onPress={() => setShowAISuggestions(false)}
-                  variant="outline"
-                  size="small"
-                />
+            <TouchableOpacity 
+              style={styles.preferenceItem}
+              onPress={() => handlePreferenceEdit('allergies')}
+            >
+              <View style={styles.preferenceContent}>
+                <Text style={styles.preferenceTitle}>Allergies</Text>
+                <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('allergies')}</Text>
               </View>
-            </Card>
-          </View>
-        )}
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <Button
-            title="Generate Weekly Plan"
-            onPress={() => setShowAISuggestions(true)}
-            variant="primary"
-            style={styles.quickActionButton}
-          />
-          <Button
-            title="Shopping List"
-            onPress={() => {}}
-            variant="outline"
-            style={styles.quickActionButton}
-          />
+              <ChevronRight size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </Card>
         </View>
       </ScrollView>
+
+      {/* Submit Button */}
+      <View style={styles.submitContainer}>
+        <Button
+          title="Plan my Week"
+          onPress={handleSubmitToAI}
+          variant="primary"
+          size="large"
+          style={styles.submitButton}
+        />
+      </View>
+
+      {renderManualEntryModal()}
+      
+      {editingPreference && (
+        <PreferenceModal
+          visible={showPreferenceModal}
+          title={getPreferenceModalTitle()}
+          type={editingPreference}
+          currentValue={preferences[editingPreference]}
+          onSave={handlePreferenceSave}
+          onClose={handlePreferenceModalClose}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -251,208 +459,206 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: '#111827',
   },
-  aiButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FEF3F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  navButton: {
+  placeholder: {
     width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
-  monthYear: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-  },
-  weekContainer: {
-    flexDirection: 'row',
+  section: {
     paddingHorizontal: 20,
-    marginBottom: 24,
-    gap: 8,
-  },
-  dayButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  selectedDay: {
-    backgroundColor: '#F97966',
-  },
-  dayName: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  dayNumber: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  selectedDayText: {
-    color: '#FFFFFF',
-  },
-  dailyPlanContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: '#111827',
+    marginBottom: 16,
   },
-  mealCard: {
-    marginBottom: 12,
-  },
-  mealContent: {
-    // No additional styles needed
-  },
-  mealHeader: {
+  ingredientButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    gap: 12,
   },
-  mealInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  ingredientButton: {
+    flex: 1,
+    borderRadius: 24,
+    paddingVertical: 12,
   },
-  mealEmoji: {
-    fontSize: 20,
-    marginRight: 12,
+  photoButton: {
+    backgroundColor: '#F97966',
   },
-  mealType: {
-    fontSize: 16,
+  photoButtonText: {
+    color: '#FFFFFF',
     fontFamily: 'Inter-SemiBold',
+  },
+  manualButton: {
+    backgroundColor: '#E5E7EB',
+    borderColor: '#E5E7EB',
+  },
+  manualButtonText: {
     color: '#111827',
+    fontFamily: 'Inter-SemiBold',
   },
-  mealTime: {
+  ingredientsPreview: {
+    marginTop: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  ingredientsLabel: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
   },
-  recipePreview: {
+  ingredientsText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  editText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#F97966',
+  },
+  preferencesCard: {
+    padding: 0,
+  },
+  preferenceItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  recipeImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    marginRight: 12,
-  },
-  recipeInfo: {
+  preferenceContent: {
     flex: 1,
   },
-  recipeTitle: {
-    fontSize: 14,
+  preferenceTitle: {
+    fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
     marginBottom: 4,
   },
-  recipeDetails: {
-    fontSize: 12,
+  preferenceSubtitle: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
-  addMealButton: {
+  preferenceDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: 20,
+  },
+  submitContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  submitButton: {
+    width: '100%',
+    borderRadius: 24,
+    paddingVertical: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-    borderRadius: 12,
   },
-  addMealText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#9CA3AF',
-    marginLeft: 8,
-  },
-  aiSuggestionsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  aiSuggestionsCard: {
-    backgroundColor: '#FEF3F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  aiHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  aiTitle: {
+  modalSubtitle: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginLeft: 8,
-  },
-  aiDescription: {
-    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-    marginBottom: 16,
-    lineHeight: 20,
+    marginBottom: 20,
+    lineHeight: 22,
   },
-  suggestionsList: {
-    marginBottom: 16,
+  modalScrollView: {
+    maxHeight: 400,
+    marginBottom: 24,
   },
-  suggestionItem: {
-    fontSize: 14,
+  ingredientInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
     fontFamily: 'Inter-Regular',
+    backgroundColor: '#FFFFFF',
+    color: '#111827',
+    minHeight: 120,
+    marginBottom: 24,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  customInputContainer: {
+    marginTop: 16,
+  },
+  customInputLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
     color: '#374151',
     marginBottom: 8,
   },
-  aiActions: {
+  customInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    backgroundColor: '#FFFFFF',
+    color: '#111827',
+  },
+  modalActions: {
     flexDirection: 'row',
     gap: 12,
   },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 12,
-  },
-  quickActionButton: {
+  modalButton: {
     flex: 1,
   },
 });
