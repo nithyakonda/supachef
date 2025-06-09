@@ -9,10 +9,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Clock, ArrowRight, Plus, ChefHat } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Clock, ArrowRight, Plus, User } from 'lucide-react-native';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { sampleWeeklyMealPlans, sampleRecipes } from '@/data/sampleData';
+import { sampleWeeklyMealPlans } from '@/data/sampleData';
 import { Meal } from '@/types';
 
 const { width } = Dimensions.get('window');
@@ -78,14 +78,6 @@ export default function HomeScreen() {
     setSelectedDayIndex(dayIndex);
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   const getMealIcon = (mealType: string) => {
     switch (mealType) {
       case 'breakfast':
@@ -109,13 +101,13 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Good morning!</Text>
-            <Text style={styles.date}>{formatDate(new Date())}</Text>
-          </View>
           <TouchableOpacity style={styles.profileButton}>
-            <ChefHat size={24} color="#F97966" />
+            <User size={24} color="#F97966" />
           </TouchableOpacity>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greeting}>Hello, Chef!</Text>
+          </View>
+          <View style={styles.placeholder} />
         </View>
 
         {/* Week Calendar */}
@@ -256,54 +248,6 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
         </View>
-
-        {/* Recent Recipes */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Recipes</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {sampleRecipes.slice(0, 3).map((recipe) => (
-              <Card key={recipe.id} style={styles.recipeCard}>
-                <Image
-                  source={{ uri: recipe.imageUrl }}
-                  style={styles.recipeCardImage}
-                />
-                <View style={styles.recipeCardContent}>
-                  <Text style={styles.recipeCardTitle} numberOfLines={2}>
-                    {recipe.title}
-                  </Text>
-                  <Text style={styles.recipeCardDetails}>
-                    {recipe.cookingTime} min • {recipe.difficulty}
-                  </Text>
-                </View>
-              </Card>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <Button
-              title="Plan This Week"
-              onPress={() => {}}
-              variant="primary"
-              style={styles.quickActionButton}
-            />
-            <Button
-              title="Add Recipe"
-              onPress={() => {}}
-              variant="outline"
-              style={styles.quickActionButton}
-            />
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -316,21 +260,9 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-  },
-  greeting: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  date: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginTop: 4,
   },
   profileButton: {
     width: 48,
@@ -339,6 +271,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3F2',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  greetingContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  greeting: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+  },
+  placeholder: {
+    width: 48,
   },
   weekContainer: {
     flexDirection: 'row',
@@ -447,26 +391,6 @@ const styles = StyleSheet.create({
   addMealButton: {
     paddingHorizontal: 24,
   },
-  section: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#F97966',
-  },
   mealCard: {
     marginBottom: 12,
   },
@@ -529,38 +453,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-  },
-  recipeCard: {
-    width: 160,
-    marginLeft: 20,
-    marginRight: 8,
-  },
-  recipeCardImage: {
-    width: '100%',
-    height: 120,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  recipeCardContent: {
-    // No additional styles needed
-  },
-  recipeCardTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  recipeCardDetails: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  quickActionButton: {
-    flex: 1,
   },
 });
