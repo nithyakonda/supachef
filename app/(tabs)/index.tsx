@@ -20,6 +20,28 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const [viewMode, setViewMode] = useState<'today' | 'weekly'>('today');
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  const getWeekDates = (date: Date) => {
+    const week = [];
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay());
+    
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      week.push(day);
+    }
+    return week;
+  };
+
+  const isSameDay = (date1: Date, date2: Date) => {
+    return date1.toDateString() === date2.toDateString();
+  };
+
+  const weekDates = getWeekDates(selectedDate);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
@@ -88,6 +110,32 @@ export default function HomeScreen() {
               Weekly Plan
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Week Calendar */}
+        <View style={styles.weekContainer}>
+          {weekDates.map((date, index) => (
+            <View
+              key={index}
+              style={[
+                styles.dayButton,
+                isSameDay(date, new Date()) && styles.selectedDay,
+              ]}
+            >
+              <Text style={[
+                styles.dayName,
+                isSameDay(date, new Date()) && styles.selectedDayText,
+              ]}>
+                {weekDays[index]}
+              </Text>
+              <Text style={[
+                styles.dayNumber,
+                isSameDay(date, new Date()) && styles.selectedDayText,
+              ]}>
+                {date.getDate()}
+              </Text>
+            </View>
+          ))}
         </View>
 
         {/* Today's Meals */}
@@ -257,6 +305,36 @@ const styles = StyleSheet.create({
   },
   activeToggleText: {
     color: '#111827',
+  },
+  weekContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    gap: 8,
+  },
+  dayButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  selectedDay: {
+    backgroundColor: '#F97966',
+  },
+  dayName: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  dayNumber: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+  },
+  selectedDayText: {
+    color: '#FFFFFF',
   },
   section: {
     marginBottom: 32,

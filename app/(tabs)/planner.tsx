@@ -8,48 +8,13 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react-native';
+import { Plus, Sparkles } from 'lucide-react-native';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { sampleMealPlan } from '@/data/sampleData';
 
 export default function PlannerScreen() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showAISuggestions, setShowAISuggestions] = useState(false);
-
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  
-  const getWeekDates = (date: Date) => {
-    const week = [];
-    const startOfWeek = new Date(date);
-    startOfWeek.setDate(date.getDate() - date.getDay());
-    
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      week.push(day);
-    }
-    return week;
-  };
-
-  const weekDates = getWeekDates(selectedDate);
-
-  const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
-  const isSameDay = (date1: Date, date2: Date) => {
-    return date1.toDateString() === date2.toDateString();
-  };
-
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() + (direction === 'next' ? 7 : -7));
-    setSelectedDate(newDate);
-  };
 
   const getMealIcon = (mealType: string) => {
     switch (mealType) {
@@ -80,59 +45,11 @@ export default function PlannerScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Calendar Navigation */}
-        <View style={styles.calendarHeader}>
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigateWeek('prev')}
-          >
-            <ChevronLeft size={20} color="#6B7280" />
-          </TouchableOpacity>
-          
-          <Text style={styles.monthYear}>
-            {formatMonthYear(selectedDate)}
-          </Text>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigateWeek('next')}
-          >
-            <ChevronRight size={20} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Week Calendar */}
-        <View style={styles.weekContainer}>
-          {weekDates.map((date, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.dayButton,
-                isSameDay(date, selectedDate) && styles.selectedDay,
-              ]}
-              onPress={() => setSelectedDate(date)}
-            >
-              <Text style={[
-                styles.dayName,
-                isSameDay(date, selectedDate) && styles.selectedDayText,
-              ]}>
-                {weekDays[index]}
-              </Text>
-              <Text style={[
-                styles.dayNumber,
-                isSameDay(date, selectedDate) && styles.selectedDayText,
-              ]}>
-                {date.getDate()}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
         {/* Daily Meal Plan */}
         <View style={styles.dailyPlanContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              {selectedDate.toLocaleDateString('en-US', { 
+              {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long',
                 month: 'short',
                 day: 'numeric'
@@ -268,58 +185,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3F2',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  navButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  monthYear: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-  },
-  weekContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    gap: 8,
-  },
-  dayButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  selectedDay: {
-    backgroundColor: '#F97966',
-  },
-  dayName: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  dayNumber: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  selectedDayText: {
-    color: '#FFFFFF',
   },
   dailyPlanContainer: {
     paddingHorizontal: 20,
