@@ -302,7 +302,7 @@ export default function PreferencesScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ChevronLeft size={24} color="#6B7280" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Preferences</Text>
+        <Text style={styles.headerTitle}>Customize Your Meal Plan</Text>
         <View style={styles.placeholder} />
       </View>
 
