@@ -13,11 +13,167 @@ import { ChevronLeft, ChevronRight, Camera, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Chip from '@/components/ui/Chip';
+
+interface PreferenceModalProps {
+  visible: boolean;
+  title: string;
+  type: 'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies';
+  currentValue: string;
+  onSave: (value: string) => void;
+  onClose: () => void;
+}
+
+const PreferenceModal: React.FC<PreferenceModalProps> = ({
+  visible,
+  title,
+  type,
+  currentValue,
+  onSave,
+  onClose,
+}) => {
+  const [selectedValue, setSelectedValue] = useState(currentValue);
+  const [customInput, setCustomInput] = useState('');
+
+  const getOptions = () => {
+    switch (type) {
+      case 'currentWeek':
+        return ['7 days', '5 days (weekdays)', '6 days (no Sunday)', '3 days'];
+      case 'mealsPerDay':
+        return ['1 meal per day', '2 meals per day', '3 meals per day', '4 meals per day'];
+      case 'dietaryRestrictions':
+        return ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Keto', 'Paleo', 'Low-Carb'];
+      case 'allergies':
+        return ['None', 'Nuts', 'Shellfish', 'Dairy', 'Eggs', 'Soy', 'Gluten', 'Fish'];
+      default:
+        return [];
+    }
+  };
+
+  const handleSave = () => {
+    const valueToSave = customInput.trim() || selectedValue;
+    onSave(valueToSave);
+    setCustomInput('');
+    onClose();
+  };
+
+  const handleClose = () => {
+    setSelectedValue(currentValue);
+    setCustomInput('');
+    onClose();
+  };
+
+  const options = getOptions();
+  const allowsMultiple = type === 'dietaryRestrictions' || type === 'allergies';
+  const allowsCustom = type === 'dietaryRestrictions' || type === 'allergies';
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={handleClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+            {allowsMultiple ? (
+              <View style={styles.chipsContainer}>
+                {options.map((option) => (
+                  <Chip
+                    key={option}
+                    label={option}
+                    selected={selectedValue.includes(option)}
+                    onPress={() => {
+                      if (option === 'None') {
+                        setSelectedValue('None');
+                      } else {
+                        const currentSelections = selectedValue === 'None' ? [] : selectedValue.split(', ');
+                        if (currentSelections.includes(option)) {
+                          const newSelections = currentSelections.filter(item => item !== option);
+                          setSelectedValue(newSelections.length > 0 ? newSelections.join(', ') : 'None');
+                        } else {
+                          const newSelections = [...currentSelections.filter(item => item !== 'None'), option];
+                          setSelectedValue(newSelections.join(', '));
+                        }
+                      }
+                    }}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.optionsContainer}>
+                {options.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.optionItem,
+                      selectedValue === option && styles.selectedOption
+                    ]}
+                    onPress={() => setSelectedValue(option)}
+                  >
+                    <View style={[
+                      styles.radioCircle,
+                      selectedValue === option && styles.selectedCircle
+                    ]} />
+                    <Text style={[
+                      styles.optionText,
+                      selectedValue === option && styles.selectedOptionText
+                    ]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {allowsCustom && (
+              <View style={styles.customInputContainer}>
+                <Text style={styles.customInputLabel}>Or add custom:</Text>
+                <TextInput
+                  style={styles.customInput}
+                  placeholder="Type custom option..."
+                  value={customInput}
+                  onChangeText={setCustomInput}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <Button
+              title="Cancel"
+              onPress={handleClose}
+              variant="outline"
+              style={styles.modalButton}
+            />
+            <Button
+              title="Save"
+              onPress={handleSave}
+              variant="primary"
+              style={styles.modalButton}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 export default function PlannerScreen() {
   const [ingredientMethod, setIngredientMethod] = useState<'photo' | 'manual'>('photo');
   const [manualIngredients, setManualIngredients] = useState('');
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [showPreferenceModal, setShowPreferenceModal] = useState(false);
+  const [editingPreference, setEditingPreference] = useState<'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies' | null>(null);
   const [preferences, setPreferences] = useState({
     currentWeek: '7 days',
     mealsPerDay: '3 meals per day',
@@ -39,9 +195,25 @@ export default function PlannerScreen() {
     console.log('Manual ingredients saved:', manualIngredients);
   };
 
-  const handlePreferenceEdit = (key: string) => {
-    // Stub implementation - would open preference editor
-    console.log(`Editing preference: ${key}`);
+  const handlePreferenceEdit = (key: 'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies') => {
+    setEditingPreference(key);
+    setShowPreferenceModal(true);
+  };
+
+  const handlePreferenceSave = (value: string) => {
+    if (editingPreference) {
+      setPreferences(prev => ({
+        ...prev,
+        [editingPreference]: value
+      }));
+    }
+    setShowPreferenceModal(false);
+    setEditingPreference(null);
+  };
+
+  const handlePreferenceModalClose = () => {
+    setShowPreferenceModal(false);
+    setEditingPreference(null);
   };
 
   const handleSubmitToAI = () => {
@@ -50,6 +222,21 @@ export default function PlannerScreen() {
       ingredients: manualIngredients,
       preferences,
     });
+  };
+
+  const getPreferenceModalTitle = () => {
+    switch (editingPreference) {
+      case 'currentWeek':
+        return 'Planning Duration';
+      case 'mealsPerDay':
+        return 'Meals per Day';
+      case 'dietaryRestrictions':
+        return 'Dietary Restrictions';
+      case 'allergies':
+        return 'Allergies';
+      default:
+        return '';
+    }
   };
 
   const renderManualEntryModal = () => (
@@ -222,6 +409,17 @@ export default function PlannerScreen() {
       </View>
 
       {renderManualEntryModal()}
+      
+      {editingPreference && (
+        <PreferenceModal
+          visible={showPreferenceModal}
+          title={getPreferenceModalTitle()}
+          type={editingPreference}
+          currentValue={preferences[editingPreference]}
+          onSave={handlePreferenceSave}
+          onClose={handlePreferenceModalClose}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -271,7 +469,7 @@ const styles = StyleSheet.create({
   ingredientButton: {
     flex: 1,
     borderRadius: 24,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   photoButton: {
     backgroundColor: '#F97966',
@@ -349,7 +547,7 @@ const styles = StyleSheet.create({
   submitButton: {
     width: '100%',
     borderRadius: 24,
-    paddingVertical: 18,
+    paddingVertical: 14,
   },
   modalOverlay: {
     flex: 1,
@@ -361,7 +559,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    minHeight: 400,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -389,6 +587,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     lineHeight: 22,
   },
+  modalScrollView: {
+    maxHeight: 400,
+    marginBottom: 24,
+  },
   ingredientInput: {
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -401,6 +603,69 @@ const styles = StyleSheet.create({
     color: '#111827',
     minHeight: 120,
     marginBottom: 24,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  optionsContainer: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  selectedOption: {
+    borderColor: '#F97966',
+    backgroundColor: '#FEF3F2',
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    marginRight: 12,
+  },
+  selectedCircle: {
+    borderColor: '#F97966',
+    backgroundColor: '#F97966',
+  },
+  optionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  selectedOptionText: {
+    color: '#F97966',
+    fontFamily: 'Inter-SemiBold',
+  },
+  customInputContainer: {
+    marginTop: 16,
+  },
+  customInputLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  customInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    backgroundColor: '#FFFFFF',
+    color: '#111827',
   },
   modalActions: {
     flexDirection: 'row',
