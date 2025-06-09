@@ -5,10 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import { cuisineOptions, dietaryRestrictions, mealTypes, weekDays } from '@/data/sampleData';
@@ -24,6 +27,13 @@ const PREFERENCE_STEPS = [
 
 export default function PreferencesScreen() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newItemText, setNewItemText] = useState('');
+  const [addingToCategory, setAddingToCategory] = useState<string>('');
+  const [customOptions, setCustomOptions] = useState({
+    cuisines: [] as string[],
+    dietary: [] as string[],
+  });
   const [preferences, setPreferences] = useState({
     cuisines: [] as string[],
     dietary: [] as string[],
@@ -68,6 +78,60 @@ export default function PreferencesScreen() {
     }));
   };
 
+  const openAddModal = (category: string) => {
+    setAddingToCategory(category);
+    setNewItemText('');
+    setShowAddModal(true);
+  };
+
+  const handleAddNewItem = () => {
+    if (!newItemText.trim()) {
+      Alert.alert('Error', 'Please enter a valid option');
+      return;
+    }
+
+    const trimmedText = newItemText.trim();
+    
+    // Check if item already exists
+    const existingOptions = addingToCategory === 'cuisines' 
+      ? [...cuisineOptions, ...customOptions.cuisines]
+      : [...dietaryRestrictions, ...customOptions.dietary];
+    
+    if (existingOptions.some(option => option.toLowerCase() === trimmedText.toLowerCase())) {
+      Alert.alert('Error', 'This option already exists');
+      return;
+    }
+
+    // Add to custom options
+    setCustomOptions(prev => ({
+      ...prev,
+      [addingToCategory]: [...prev[addingToCategory as keyof typeof prev], trimmedText]
+    }));
+
+    // Auto-select the new item
+    toggleSelection(addingToCategory, trimmedText);
+
+    // Close modal
+    setShowAddModal(false);
+    setNewItemText('');
+    setAddingToCategory('');
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setNewItemText('');
+    setAddingToCategory('');
+  };
+
+  const getAllOptions = (category: string) => {
+    if (category === 'cuisines') {
+      return [...cuisineOptions, ...customOptions.cuisines];
+    } else if (category === 'dietary') {
+      return [...dietaryRestrictions, ...customOptions.dietary];
+    }
+    return [];
+  };
+
   const renderProgressDots = () => (
     <View style={styles.progressContainer}>
       {PREFERENCE_STEPS.map((_, index) => (
@@ -89,7 +153,7 @@ export default function PreferencesScreen() {
       <Text style={styles.stepSubtitle}>Select all that apply</Text>
       
       <View style={styles.chipsContainer}>
-        {cuisineOptions.map(cuisine => (
+        {getAllOptions('cuisines').map(cuisine => (
           <Chip
             key={cuisine}
             label={cuisine}
@@ -97,12 +161,15 @@ export default function PreferencesScreen() {
             onPress={() => toggleSelection('cuisines', cuisine)}
           />
         ))}
-        <Chip
-          label="+ Add New"
-          selected={false}
-          onPress={() => {}}
+        <TouchableOpacity
           style={styles.addNewChip}
-        />
+          onPress={() => openAddModal('cuisines')}
+        >
+          <View style={styles.addNewContent}>
+            <Plus size={16} color="#6B7280" />
+            <Text style={styles.addNewText}>Add New</Text>
+          </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -113,7 +180,7 @@ export default function PreferencesScreen() {
       <Text style={styles.stepSubtitle}>Select all that apply</Text>
       
       <View style={styles.chipsContainer}>
-        {dietaryRestrictions.map(restriction => (
+        {getAllOptions('dietary').map(restriction => (
           <Chip
             key={restriction}
             label={restriction}
@@ -121,12 +188,15 @@ export default function PreferencesScreen() {
             onPress={() => toggleSelection('dietary', restriction)}
           />
         ))}
-        <Chip
-          label="+ Add New"
-          selected={false}
-          onPress={() => {}}
+        <TouchableOpacity
           style={styles.addNewChip}
-        />
+          onPress={() => openAddModal('dietary')}
+        >
+          <View style={styles.addNewContent}>
+            <Plus size={16} color="#6B7280" />
+            <Text style={styles.addNewText}>Add New</Text>
+          </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -296,6 +366,52 @@ export default function PreferencesScreen() {
     }
   };
 
+  const renderAddModal = () => (
+    <Modal
+      visible={showAddModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={closeAddModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              Add New {addingToCategory === 'cuisines' ? 'Cuisine' : 'Dietary Restriction'}
+            </Text>
+            <TouchableOpacity onPress={closeAddModal} style={styles.closeButton}>
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          
+          <TextInput
+            style={styles.modalInput}
+            placeholder={`Enter ${addingToCategory === 'cuisines' ? 'cuisine name' : 'dietary restriction'}`}
+            value={newItemText}
+            onChangeText={setNewItemText}
+            autoFocus={true}
+            placeholderTextColor="#9CA3AF"
+          />
+          
+          <View style={styles.modalActions}>
+            <Button
+              title="Cancel"
+              onPress={closeAddModal}
+              variant="outline"
+              style={styles.modalButton}
+            />
+            <Button
+              title="Add"
+              onPress={handleAddNewItem}
+              variant="primary"
+              style={styles.modalButton}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -321,6 +437,8 @@ export default function PreferencesScreen() {
           style={styles.nextButton}
         />
       </View>
+
+      {renderAddModal()}
     </SafeAreaView>
   );
 }
@@ -396,7 +514,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   addNewChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  addNewContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addNewText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginLeft: 4,
   },
   radioContainer: {
     gap: 16,
@@ -509,5 +645,58 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     width: '100%',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    flex: 1,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    backgroundColor: '#FFFFFF',
+    color: '#111827',
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
