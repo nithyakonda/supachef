@@ -428,7 +428,7 @@ export default function PlannerScreen() {
       {/* Submit Button */}
       <View style={styles.submitContainer}>
         <Button
-          title="Plan my week"
+          title="Plan my Week"
           onPress={handleSubmitToAI}
           variant="primary"
           size="large"
