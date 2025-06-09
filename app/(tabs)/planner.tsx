@@ -237,6 +237,31 @@ export default function PlannerScreen() {
   const getPreferenceSubtitle = (key: keyof typeof preferences) => {
     const value = preferences[key];
     if (Array.isArray(value)) {
+      // Special handling for currentWeek to show simplified labels
+      if (key === 'currentWeek') {
+        const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const weekends = ['Saturday', 'Sunday'];
+        
+        // Check if all days are selected
+        if (value.length === allDays.length && allDays.every(day => value.includes(day))) {
+          return 'All days';
+        }
+        
+        // Check if only weekdays are selected
+        if (value.length === weekdays.length && weekdays.every(day => value.includes(day)) && !weekends.some(day => value.includes(day))) {
+          return 'Weekdays only';
+        }
+        
+        // Check if only weekends are selected
+        if (value.length === weekends.length && weekends.every(day => value.includes(day)) && !weekdays.some(day => value.includes(day))) {
+          return 'Weekends only';
+        }
+        
+        // Otherwise, show individual days
+        return value.join(', ');
+      }
+      
       return value.join(', ');
     }
     return value;
@@ -403,7 +428,7 @@ export default function PlannerScreen() {
       {/* Submit Button */}
       <View style={styles.submitContainer}>
         <Button
-          title="Submit to AI Sous-Chef"
+          title="Plan my week"
           onPress={handleSubmitToAI}
           variant="primary"
           size="large"
@@ -543,9 +568,6 @@ const styles = StyleSheet.create({
   submitContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
   submitButton: {
     width: '100%',
