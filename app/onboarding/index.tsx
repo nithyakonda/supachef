@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Image,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -15,6 +16,11 @@ const { width, height } = Dimensions.get('window');
 export default function OnboardingScreen() {
   const handleGetStarted = () => {
     router.push('/onboarding/welcome');
+  };
+
+  const handleSignIn = () => {
+    // Navigate to the welcome screen with login mode
+    router.push('/onboarding/welcome?mode=login');
   };
 
   return (
@@ -57,10 +63,12 @@ export default function OnboardingScreen() {
             size="large"
             style={styles.getStartedButton}
           />
-          <Text style={styles.loginText}>
-            Already have an account?{' '}
-            <Text style={styles.loginLink}>Sign In</Text>
-          </Text>
+          <TouchableOpacity onPress={handleSignIn}>
+            <Text style={styles.loginText}>
+              Already have an account?{' '}
+              <Text style={styles.loginLink}>Sign In</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>

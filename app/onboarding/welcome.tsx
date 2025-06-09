@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,24 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 
 export default function WelcomeScreen() {
+  const { mode } = useLocalSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(false);
+
+  // Set initial mode based on URL parameter
+  useEffect(() => {
+    if (mode === 'login') {
+      setIsLogin(true);
+    }
+  }, [mode]);
 
   const handleSubmit = () => {
     if (!name && !isLogin) {
@@ -35,6 +43,14 @@ export default function WelcomeScreen() {
 
   const goBack = () => {
     router.back();
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    // Clear form when switching modes
+    setName('');
+    setEmail('');
+    setPassword('');
   };
 
   return (
@@ -114,6 +130,12 @@ export default function WelcomeScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {isLogin && (
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <Button
@@ -126,7 +148,7 @@ export default function WelcomeScreen() {
 
           <TouchableOpacity
             style={styles.switchMode}
-            onPress={() => setIsLogin(!isLogin)}
+            onPress={toggleMode}
           >
             <Text style={styles.switchText}>
               {isLogin 
@@ -234,6 +256,15 @@ const styles = StyleSheet.create({
   eyeButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#F97966',
   },
   submitButton: {
     width: '100%',
