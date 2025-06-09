@@ -43,7 +43,7 @@ export default function PreferencesScreen() {
     prefersLeftovers: false,
     adults: 2,
     kids: 0,
-    planningDays: [] as string[],
+    planningDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as string[], // Default weekdays
   });
 
   const handleNext = () => {
@@ -332,7 +332,7 @@ export default function PreferencesScreen() {
   const renderPlanningStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Which days do you want to plan?</Text>
-      <Text style={styles.stepSubtitle}>Select your meal planning days</Text>
+      <Text style={styles.stepSubtitle}>Weekdays (Monday-Friday) are selected by default</Text>
       
       <View style={styles.chipsContainer}>
         {weekDays.map(day => (
