@@ -37,8 +37,14 @@ export default function WelcomeScreen() {
       return;
     }
 
-    // Mock authentication - in real app, connect to Firebase
-    router.push('/onboarding/preferences');
+    // Mock authentication - in real app, connect to Firebase/Supabase
+    if (isLogin) {
+      // For existing users signing in, go directly to main app
+      router.replace('/(tabs)');
+    } else {
+      // For new users signing up, go to preferences quiz
+      router.push('/onboarding/preferences');
+    }
   };
 
   const goBack = () => {
