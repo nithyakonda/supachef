@@ -4,7 +4,7 @@
     "slug": "supachef-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app_icon.png",
+    "icon": "./assets/images/app_icon_android.png",
     "scheme": "supachef",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app_icon.png",
+        "foregroundImage": "./assets/images/app_icon_android.png",
         "backgroundColor": "#F97966"
       },
       "package": "com.supachef.app"
@@ -22,7 +22,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/app_icon.png"
+      "favicon": "./assets/images/app_icon_android.png"
     },
     "plugins": ["expo-router", "expo-font", "expo-web-browser"],
     "experiments": {

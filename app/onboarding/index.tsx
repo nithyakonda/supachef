@@ -23,7 +23,11 @@ export default function OnboardingScreen() {
         {/* Logo/Icon */}
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
-            <Text style={styles.logoText}>👨‍🍳</Text>
+            <Image
+              source={require('@/assets/images/app_icon_android.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.appName}>SupaChef</Text>
         </View>
@@ -78,16 +82,25 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FEF3F2',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  logoText: {
-    fontSize: 36,
+  logoImage: {
+    width: 80,
+    height: 80,
   },
   appName: {
     fontSize: 28,
