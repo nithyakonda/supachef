@@ -11,20 +11,36 @@ import {
 } from 'react-native';
 import { X, Search } from 'lucide-react-native';
 import Button from './Button';
+import Chip from './Chip';
 import { sampleRecipes } from '@/data/sampleData';
-import { Meal, Recipe } from '@/types';
+import { Meal, Recipe, MealPlan } from '@/types';
 
 interface EditMealModalProps {
   visible: boolean;
   meal: Meal;
-  onSave: (updatedMeal: Meal) => void;
+  currentDayIndex: number;
+  allWeeklyMealPlans: MealPlan[];
+  allMealTypes: string[];
+  onSave: (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => void;
   onClose: () => void;
 }
 
-export default function EditMealModal({ visible, meal, onSave, onClose }: EditMealModalProps) {
+export default function EditMealModal({ 
+  visible, 
+  meal, 
+  currentDayIndex,
+  allWeeklyMealPlans,
+  allMealTypes,
+  onSave, 
+  onClose 
+}: EditMealModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [customTitle, setCustomTitle] = useState('');
+  const [selectedDayIndex, setSelectedDayIndex] = useState(currentDayIndex);
+  const [selectedMealType, setSelectedMealType] = useState(meal.type);
+
+  const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // Initialize state when modal opens
   useEffect(() => {
@@ -38,13 +54,24 @@ export default function EditMealModal({ visible, meal, onSave, onClose }: EditMe
         setSearchQuery('');
         setCustomTitle('');
       }
+      setSelectedDayIndex(currentDayIndex);
+      setSelectedMealType(meal.type);
     }
-  }, [visible, meal]);
+  }, [visible, meal, currentDayIndex]);
 
   // Filter recipes based on search query
   const filteredRecipes = sampleRecipes.filter(recipe =>
     recipe.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Get available days (current day and future days)
+  const availableDays = allWeeklyMealPlans.map((plan, index) => ({
+    index,
+    name: weekDays[index],
+    date: plan.date,
+    isCurrent: index === currentDayIndex,
+    isFuture: index >= currentDayIndex
+  })).filter(day => day.isFuture);
 
   const handleRecipeSelect = (recipe: Recipe) => {
     setSelectedRecipe(recipe);
@@ -66,6 +93,14 @@ export default function EditMealModal({ visible, meal, onSave, onClose }: EditMe
     }
   };
 
+  const handleDaySelect = (dayIndex: number) => {
+    setSelectedDayIndex(dayIndex);
+  };
+
+  const handleMealTypeSelect = (mealType: string) => {
+    setSelectedMealType(mealType);
+  };
+
   const handleSave = () => {
     let updatedMeal: Meal;
 
@@ -74,6 +109,7 @@ export default function EditMealModal({ visible, meal, onSave, onClose }: EditMe
       updatedMeal = {
         ...meal,
         recipe: selectedRecipe,
+        type: selectedMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
       };
     } else if (customTitle.trim()) {
       // Create a custom meal with placeholder image
@@ -96,22 +132,26 @@ export default function EditMealModal({ visible, meal, onSave, onClose }: EditMe
       updatedMeal = {
         ...meal,
         recipe: customRecipe,
+        type: selectedMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
       };
     } else {
       // No recipe selected and no custom title
       updatedMeal = {
         ...meal,
         recipe: undefined,
+        type: selectedMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
       };
     }
 
-    onSave(updatedMeal);
+    onSave(updatedMeal, selectedDayIndex, selectedMealType);
   };
 
   const handleCancel = () => {
     setSearchQuery('');
     setSelectedRecipe(null);
     setCustomTitle('');
+    setSelectedDayIndex(currentDayIndex);
+    setSelectedMealType(meal.type);
     onClose();
   };
 
@@ -138,23 +178,52 @@ export default function EditMealModal({ visible, meal, onSave, onClose }: EditMe
             </TouchableOpacity>
           </View>
 
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputContainer}>
-              <Search size={20} color="#9CA3AF" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search recipes or type custom meal name..."
-                value={searchQuery}
-                onChangeText={handleSearchChange}
-                placeholderTextColor="#9CA3AF"
-                autoFocus={true}
-              />
-            </View>
-          </View>
-
-          {/* Content */}
           <ScrollView style={styles.contentScrollView} showsVerticalScrollIndicator={false}>
+            {/* Day Selection */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Select Day</Text>
+              <View style={styles.chipsContainer}>
+                {availableDays.map((day) => (
+                  <Chip
+                    key={day.index}
+                    label={day.isCurrent ? `${day.name} (Today)` : day.name}
+                    selected={selectedDayIndex === day.index}
+                    onPress={() => handleDaySelect(day.index)}
+                  />
+                ))}
+              </View>
+            </View>
+
+            {/* Meal Type Selection */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Select Meal Type</Text>
+              <View style={styles.chipsContainer}>
+                {allMealTypes.map((mealType) => (
+                  <Chip
+                    key={mealType}
+                    label={mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+                    selected={selectedMealType === mealType}
+                    onPress={() => handleMealTypeSelect(mealType)}
+                  />
+                ))}
+              </View>
+            </View>
+
+            {/* Search Bar */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Recipe</Text>
+              <View style={styles.searchInputContainer}>
+                <Search size={20} color="#9CA3AF" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search recipes or type custom meal name..."
+                  value={searchQuery}
+                  onChangeText={handleSearchChange}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+
             {/* Recipe Suggestions */}
             {showSuggestions && (
               <View style={styles.suggestionsContainer}>
@@ -279,8 +348,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchContainer: {
+  contentScrollView: {
+    maxHeight: 500,
     marginBottom: 20,
+  },
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -298,10 +381,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#111827',
-  },
-  contentScrollView: {
-    maxHeight: 400,
-    marginBottom: 20,
   },
   suggestionsContainer: {
     marginBottom: 20,

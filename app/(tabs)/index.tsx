@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Clock, CreditCard as Edit, Plus, User } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Pencil, Plus, User } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EditMealModal from '../../components/ui/EditMealModal';
@@ -91,19 +91,35 @@ export default function HomeScreen() {
     setShowEditMealModal(true);
   };
 
-  const handleSaveEditedMeal = (updatedMeal: Meal) => {
+  const handleSaveEditedMeal = (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => {
     if (!currentMealEditInfo) return;
 
-    const { dayIndex, mealIndex } = currentMealEditInfo;
-    
+    const { dayIndex: originalDayIndex, mealIndex: originalMealIndex } = currentMealEditInfo;
+    const targetDayIndex = newDayIndex !== undefined ? newDayIndex : originalDayIndex;
+    const targetMealType = newMealType || updatedMeal.type;
+
     setWeeklyMealPlans(prevPlans => {
       const newPlans = [...prevPlans];
-      newPlans[dayIndex] = {
-        ...newPlans[dayIndex],
-        meals: newPlans[dayIndex].meals.map((meal, index) => 
-          index === mealIndex ? updatedMeal : meal
-        )
+      
+      // Remove meal from original position
+      newPlans[originalDayIndex] = {
+        ...newPlans[originalDayIndex],
+        meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
       };
+
+      // Update meal with new type if changed
+      const mealToAdd = {
+        ...updatedMeal,
+        type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+        id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
+      };
+
+      // Add meal to target position
+      newPlans[targetDayIndex] = {
+        ...newPlans[targetDayIndex],
+        meals: [...newPlans[targetDayIndex].meals, mealToAdd]
+      };
+
       return newPlans;
     });
 
@@ -233,20 +249,18 @@ export default function HomeScreen() {
                           
                           return (
                             <Card key={meal.id} style={styles.mealCard}>
-                              <TouchableOpacity
-                                style={styles.mealContent}
-                                onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
-                              >
+                              <View style={styles.mealContent}>
                                 <View style={styles.mealHeader}>
                                   <View style={styles.mealInfo}>
-                                    {meal.time && (
-                                      <View style={styles.timeContainer}>
-                                        <Clock size={12} color="#6B7280" />
-                                        <Text style={styles.mealTime}>{meal.time}</Text>
-                                      </View>
-                                    )}
+                                    {/* Meal time removed as requested */}
                                   </View>
-                                  <Edit size={16} color="#9CA3AF" />
+                                  <TouchableOpacity
+                                    style={styles.editButton}
+                                    onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                  >
+                                    <Pencil size={16} color="#9CA3AF" />
+                                  </TouchableOpacity>
                                 </View>
 
                                 {meal.recipe && (
@@ -263,7 +277,7 @@ export default function HomeScreen() {
                                     </View>
                                   </View>
                                 )}
-                              </TouchableOpacity>
+                              </View>
                             </Card>
                           );
                         })}
@@ -292,6 +306,9 @@ export default function HomeScreen() {
         <EditMealModal
           visible={showEditMealModal}
           meal={currentMealEditInfo.meal}
+          currentDayIndex={currentMealEditInfo.dayIndex}
+          allWeeklyMealPlans={weeklyMealPlans}
+          allMealTypes={allMealTypes}
           onSave={handleSaveEditedMeal}
           onClose={handleCloseEditMealModal}
         />
@@ -459,15 +476,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  timeContainer: {
-    flexDirection: 'row',
+  editButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
     alignItems: 'center',
-  },
-  mealTime: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 4,
+    justifyContent: 'center',
   },
   recipePreview: {
     flexDirection: 'row',
