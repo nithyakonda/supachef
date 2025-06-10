@@ -108,6 +108,13 @@ const fetchWithProxy = async (url: string): Promise<string> => {
       throw new Error(`Proxy request failed: ${errorText}`);
     }
 
+    // Check content type before parsing as JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const responseText = await response.text();
+      throw new Error(`Proxy returned unexpected content type: ${contentType}. Response: ${responseText.substring(0, 200)}...`);
+    }
+
     const data = await response.json();
     return data.contents;
   } catch (error) {
