@@ -10,11 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, Clock, CreditCard as Edit, Plus, User } from 'lucide-react-native';
-import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
-import EditMealModal from '@/components/ui/EditMealModal';
-import { generateSampleWeeklyMealPlans } from '@/data/sampleData';
-import { Meal, MealPlan } from '@/types';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import EditMealModal from '../../components/ui/EditMealModal';
+import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
+import { Meal, MealPlan } from '../../types';
 
 const { width } = Dimensions.get('window');
 
