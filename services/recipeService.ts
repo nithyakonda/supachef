@@ -92,16 +92,22 @@ const saveRecipes = (recipes: Recipe[]): void => {
   }
 };
 
-// CORS proxy for fetching external URLs
+// Server-side proxy for fetching external URLs
 const fetchWithProxy = async (url: string): Promise<string> => {
-  // Use a CORS proxy service to fetch external content
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  
   try {
-    const response = await fetch(proxyUrl);
+    const response = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+    });
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Proxy request failed: ${errorText}`);
     }
+
     const data = await response.json();
     return data.contents;
   } catch (error) {
