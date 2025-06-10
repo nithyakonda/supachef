@@ -77,8 +77,262 @@ export const sampleRecipes: Recipe[] = [
     tags: ['Breakfast', 'Healthy', 'Quick'],
     isFavorite: true,
     createdAt: new Date(),
+  },
+  {
+    id: '4',
+    title: 'Grilled Chicken Caesar Salad',
+    description: 'Classic Caesar salad with perfectly grilled chicken',
+    imageUrl: 'https://images.pexels.com/photos/2097090/pexels-photo-2097090.jpeg',
+    cookingTime: 30,
+    servings: 2,
+    difficulty: 'Medium',
+    calories: 380,
+    ingredients: [
+      { name: 'Chicken breast', amount: '2', unit: 'pieces' },
+      { name: 'Romaine lettuce', amount: '1', unit: 'head' },
+      { name: 'Parmesan cheese', amount: '1/2', unit: 'cup' },
+      { name: 'Caesar dressing', amount: '1/4', unit: 'cup' },
+      { name: 'Croutons', amount: '1', unit: 'cup' }
+    ],
+    instructions: [
+      'Season and grill chicken breast',
+      'Chop romaine lettuce',
+      'Toss with dressing and toppings',
+      'Slice chicken and serve on top'
+    ],
+    tags: ['Protein', 'Salad', 'Lunch'],
+    isFavorite: false,
+    createdAt: new Date(),
+  },
+  {
+    id: '5',
+    title: 'Spaghetti Carbonara',
+    description: 'Creamy Italian pasta with pancetta and eggs',
+    imageUrl: 'https://images.pexels.com/photos/4518843/pexels-photo-4518843.jpeg',
+    cookingTime: 20,
+    servings: 4,
+    difficulty: 'Medium',
+    calories: 520,
+    ingredients: [
+      { name: 'Spaghetti', amount: '400', unit: 'g' },
+      { name: 'Pancetta', amount: '150', unit: 'g' },
+      { name: 'Eggs', amount: '3', unit: 'large' },
+      { name: 'Parmesan cheese', amount: '1', unit: 'cup' },
+      { name: 'Black pepper', amount: 'to taste' }
+    ],
+    instructions: [
+      'Cook spaghetti according to package directions',
+      'Crisp pancetta in a large pan',
+      'Whisk eggs with cheese and pepper',
+      'Toss hot pasta with egg mixture and pancetta'
+    ],
+    tags: ['Italian', 'Pasta', 'Dinner'],
+    isFavorite: true,
+    createdAt: new Date(),
+  },
+  {
+    id: '6',
+    title: 'Berry Smoothie Bowl',
+    description: 'Nutritious smoothie bowl topped with fresh fruits',
+    imageUrl: 'https://images.pexels.com/photos/1092730/pexels-photo-1092730.jpeg',
+    cookingTime: 10,
+    servings: 1,
+    difficulty: 'Easy',
+    calories: 280,
+    ingredients: [
+      { name: 'Frozen berries', amount: '1', unit: 'cup' },
+      { name: 'Banana', amount: '1', unit: 'medium' },
+      { name: 'Greek yogurt', amount: '1/2', unit: 'cup' },
+      { name: 'Granola', amount: '1/4', unit: 'cup' },
+      { name: 'Honey', amount: '1', unit: 'tablespoon' }
+    ],
+    instructions: [
+      'Blend frozen berries, banana, and yogurt',
+      'Pour into bowl',
+      'Top with granola and honey',
+      'Add fresh fruit as desired'
+    ],
+    tags: ['Breakfast', 'Healthy', 'Smoothie'],
+    isFavorite: false,
+    createdAt: new Date(),
   }
 ];
+
+// Helper function to get week dates starting from Sunday
+export const getWeekDatesForPlan = (date: Date = new Date()) => {
+  const week = [];
+  const startOfWeek = new Date(date);
+  startOfWeek.setDate(date.getDate() - date.getDay()); // Start from Sunday
+  
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(startOfWeek);
+    day.setDate(startOfWeek.getDate() + i);
+    week.push(day);
+  }
+  return week;
+};
+
+// Generate sample weekly meal plans
+export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
+  const weekDates = getWeekDatesForPlan();
+  
+  return weekDates.map((date, index) => {
+    const dayMeals: Meal[] = [];
+    
+    // Add different meals for different days
+    switch (index) {
+      case 0: // Sunday
+        dayMeals.push(
+          {
+            id: `${index}-breakfast`,
+            type: 'breakfast',
+            recipe: sampleRecipes[5], // Berry Smoothie Bowl
+            time: '9:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-lunch`,
+            type: 'lunch',
+            recipe: sampleRecipes[1], // Mediterranean Quinoa Bowl
+            time: '1:00 PM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-dinner`,
+            type: 'dinner',
+            recipe: sampleRecipes[4], // Spaghetti Carbonara
+            time: '7:00 PM',
+            isCompleted: false,
+          }
+        );
+        break;
+      case 1: // Monday
+        dayMeals.push(
+          {
+            id: `${index}-breakfast`,
+            type: 'breakfast',
+            recipe: sampleRecipes[2], // Avocado Toast
+            time: '8:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-lunch`,
+            type: 'lunch',
+            recipe: sampleRecipes[3], // Grilled Chicken Caesar
+            time: '12:30 PM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-dinner`,
+            type: 'dinner',
+            recipe: sampleRecipes[0], // Butternut Soup
+            time: '7:00 PM',
+            isCompleted: false,
+          }
+        );
+        break;
+      case 2: // Tuesday
+        dayMeals.push(
+          {
+            id: `${index}-breakfast`,
+            type: 'breakfast',
+            recipe: sampleRecipes[5], // Berry Smoothie Bowl
+            time: '8:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-lunch`,
+            type: 'lunch',
+            recipe: sampleRecipes[1], // Mediterranean Quinoa Bowl
+            time: '12:30 PM',
+            isCompleted: false,
+          }
+        );
+        break;
+      case 3: // Wednesday
+        dayMeals.push(
+          {
+            id: `${index}-breakfast`,
+            type: 'breakfast',
+            recipe: sampleRecipes[2], // Avocado Toast
+            time: '8:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-lunch`,
+            type: 'lunch',
+            recipe: sampleRecipes[3], // Grilled Chicken Caesar
+            time: '12:30 PM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-dinner`,
+            type: 'dinner',
+            recipe: sampleRecipes[4], // Spaghetti Carbonara
+            time: '7:00 PM',
+            isCompleted: false,
+          }
+        );
+        break;
+      case 4: // Thursday
+        dayMeals.push(
+          {
+            id: `${index}-breakfast`,
+            type: 'breakfast',
+            recipe: sampleRecipes[5], // Berry Smoothie Bowl
+            time: '8:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-dinner`,
+            type: 'dinner',
+            recipe: sampleRecipes[0], // Butternut Soup
+            time: '7:00 PM',
+            isCompleted: false,
+          }
+        );
+        break;
+      case 5: // Friday
+        dayMeals.push(
+          {
+            id: `${index}-breakfast`,
+            type: 'breakfast',
+            recipe: sampleRecipes[2], // Avocado Toast
+            time: '8:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-lunch`,
+            type: 'lunch',
+            recipe: sampleRecipes[1], // Mediterranean Quinoa Bowl
+            time: '12:30 PM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-dinner`,
+            type: 'dinner',
+            recipe: sampleRecipes[4], // Spaghetti Carbonara
+            time: '7:00 PM',
+            isCompleted: false,
+          }
+        );
+        break;
+      case 6: // Saturday
+        // No meals planned for Saturday
+        break;
+    }
+    
+    return {
+      id: `plan-${index}`,
+      userId: 'user1',
+      date: new Date(date),
+      meals: dayMeals,
+      isCompleted: false,
+    };
+  });
+};
+
+export const sampleWeeklyMealPlans = generateSampleWeeklyMealPlans();
 
 export const sampleMeals: Meal[] = [
   {

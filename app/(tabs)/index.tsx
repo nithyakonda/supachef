@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,235 +9,304 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, Clock, ArrowRight, Plus, ChefHat } from 'lucide-react-native';
-import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
-import { sampleMealPlan, sampleRecipes } from '@/data/sampleData';
-import { Meal } from '@/types';
+import { ChevronLeft, ChevronRight, Pencil, Plus, User } from 'lucide-react-native';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import EditMealModal from '../../components/ui/EditMealModal';
+import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
+import { Meal, MealPlan } from '../../types';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const [viewMode, setViewMode] = useState<'today' | 'weekly'>('today');
-  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [weeklyMealPlans, setWeeklyMealPlans] = useState<MealPlan[]>(() => generateSampleWeeklyMealPlans());
+  const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
+    // Initialize to today's index in the week (0 = Sunday, 1 = Monday, etc.)
+    const today = new Date();
+    return today.getDay();
+  });
+  const [showEditMealModal, setShowEditMealModal] = useState(false);
+  const [currentMealEditInfo, setCurrentMealEditInfo] = useState<{
+    meal: Meal;
+    dayIndex: number;
+    mealIndex: number;
+  } | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  
-  const getWeekDates = (date: Date) => {
-    const week = [];
-    const startOfWeek = new Date(date);
-    startOfWeek.setDate(date.getDate() - date.getDay());
-    
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      week.push(day);
+  const allMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+  const today = new Date();
+  const todayIndex = today.getDay();
+
+  // Initial scroll to today's meals
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          x: selectedDayIndex * width,
+          animated: false,
+        });
+      }, 100);
     }
-    return week;
-  };
+  }, []);
 
-  const isSameDay = (date1: Date, date2: Date) => {
-    return date1.toDateString() === date2.toDateString();
-  };
-
-  const weekDates = getWeekDates(selectedDate);
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
+  const handleDayPress = (dayIndex: number) => {
+    setSelectedDayIndex(dayIndex);
+    scrollViewRef.current?.scrollTo({
+      x: dayIndex * width,
+      animated: true,
     });
   };
 
-  const getMealIcon = (mealType: string) => {
-    switch (mealType) {
-      case 'breakfast':
-        return '🥞';
-      case 'lunch':
-        return '🥗';
-      case 'dinner':
-        return '🍽️';
-      case 'snack':
-        return '🍎';
-      default:
-        return '🍽️';
+  const handlePrevDay = () => {
+    if (selectedDayIndex > 0) {
+      const newIndex = selectedDayIndex - 1;
+      setSelectedDayIndex(newIndex);
+      scrollViewRef.current?.scrollTo({
+        x: newIndex * width,
+        animated: true,
+      });
     }
   };
+
+  const handleNextDay = () => {
+    if (selectedDayIndex < 6) {
+      const newIndex = selectedDayIndex + 1;
+      setSelectedDayIndex(newIndex);
+      scrollViewRef.current?.scrollTo({
+        x: newIndex * width,
+        animated: true,
+      });
+    }
+  };
+
+  const handleScrollEnd = (event: any) => {
+    const contentOffset = event.nativeEvent.contentOffset;
+    const dayIndex = Math.round(contentOffset.x / width);
+    setSelectedDayIndex(dayIndex);
+  };
+
+  const handleEditMeal = (meal: Meal, dayIndex: number, mealIndex: number) => {
+    setCurrentMealEditInfo({ meal, dayIndex, mealIndex });
+    setShowEditMealModal(true);
+  };
+
+  const handleSaveEditedMeal = (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => {
+    if (!currentMealEditInfo) return;
+
+    const { dayIndex: originalDayIndex, mealIndex: originalMealIndex } = currentMealEditInfo;
+    const targetDayIndex = newDayIndex !== undefined ? newDayIndex : originalDayIndex;
+    const targetMealType = newMealType || updatedMeal.type;
+
+    setWeeklyMealPlans(prevPlans => {
+      const newPlans = [...prevPlans];
+      
+      // Remove meal from original position
+      newPlans[originalDayIndex] = {
+        ...newPlans[originalDayIndex],
+        meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
+      };
+
+      // Update meal with new type if changed
+      const mealToAdd = {
+        ...updatedMeal,
+        type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+        id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
+      };
+
+      // Add meal to target position
+      newPlans[targetDayIndex] = {
+        ...newPlans[targetDayIndex],
+        meals: [...newPlans[targetDayIndex].meals, mealToAdd]
+      };
+
+      return newPlans;
+    });
+
+    setShowEditMealModal(false);
+    setCurrentMealEditInfo(null);
+  };
+
+  const handleCloseEditMealModal = () => {
+    setShowEditMealModal(false);
+    setCurrentMealEditInfo(null);
+  };
+
+  const selectedPlan = weeklyMealPlans[selectedDayIndex];
+  const selectedDate = selectedPlan.date;
+  const isViewingToday = selectedDayIndex === todayIndex;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Good morning!</Text>
-            <Text style={styles.date}>{formatDate(new Date())}</Text>
-          </View>
           <TouchableOpacity style={styles.profileButton}>
-            <ChefHat size={24} color="#F97966" />
+            <User size={24} color="#F97966" />
           </TouchableOpacity>
-        </View>
-
-        {/* View Toggle */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              viewMode === 'today' && styles.activeToggle,
-            ]}
-            onPress={() => setViewMode('today')}
-          >
-            <Text style={[
-              styles.toggleText,
-              viewMode === 'today' && styles.activeToggleText,
-            ]}>
-              Today's Plan
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              viewMode === 'weekly' && styles.activeToggle,
-            ]}
-            onPress={() => setViewMode('weekly')}
-          >
-            <Text style={[
-              styles.toggleText,
-              viewMode === 'weekly' && styles.activeToggleText,
-            ]}>
-              Weekly Plan
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greeting}>Hello, Chef!</Text>
+          </View>
+          <View style={styles.placeholder} />
         </View>
 
         {/* Week Calendar */}
         <View style={styles.weekContainer}>
-          {weekDates.map((date, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dayButton,
-                isSameDay(date, new Date()) && styles.selectedDay,
-              ]}
-            >
-              <Text style={[
-                styles.dayName,
-                isSameDay(date, new Date()) && styles.selectedDayText,
-              ]}>
-                {weekDays[index]}
-              </Text>
-              <Text style={[
-                styles.dayNumber,
-                isSameDay(date, new Date()) && styles.selectedDayText,
-              ]}>
-                {date.getDate()}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Today's Meals */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's Meals</Text>
-            <TouchableOpacity>
-              <Plus size={20} color="#F97966" />
-            </TouchableOpacity>
-          </View>
-
-          {sampleMealPlan.meals.map((meal) => (
-            <Card key={meal.id} style={styles.mealCard}>
+          {weeklyMealPlans.map((plan, index) => {
+            const isToday = index === todayIndex;
+            const isSelected = index === selectedDayIndex;
+            
+            return (
               <TouchableOpacity
-                style={styles.mealContent}
-                onPress={() => setSelectedMeal(meal)}
+                key={index}
+                style={[
+                  styles.dayButton,
+                  isSelected && styles.selectedDay,
+                  isToday && !isSelected && styles.todayDay,
+                ]}
+                onPress={() => handleDayPress(index)}
               >
-                <View style={styles.mealHeader}>
-                  <View style={styles.mealInfo}>
-                    <Text style={styles.mealEmoji}>{getMealIcon(meal.type)}</Text>
-                    <View style={styles.mealDetails}>
-                      <Text style={styles.mealType}>
-                        {meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}
-                      </Text>
-                      {meal.time && (
-                        <View style={styles.timeContainer}>
-                          <Clock size={12} color="#6B7280" />
-                          <Text style={styles.mealTime}>{meal.time}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  <ArrowRight size={16} color="#9CA3AF" />
-                </View>
-
-                {meal.recipe && (
-                  <View style={styles.recipePreview}>
-                    <Image
-                      source={{ uri: meal.recipe.imageUrl }}
-                      style={styles.recipeImage}
-                    />
-                    <View style={styles.recipeInfo}>
-                      <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
-                      <Text style={styles.recipeDetails}>
-                        {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
-                      </Text>
-                    </View>
-                  </View>
+                <Text style={[
+                  styles.dayName,
+                  isSelected && styles.selectedDayText,
+                  isToday && !isSelected && styles.todayDayText,
+                ]}>
+                  {weekDays[index]}
+                </Text>
+                <Text style={[
+                  styles.dayNumber,
+                  isSelected && styles.selectedDayText,
+                  isToday && !isSelected && styles.todayDayText,
+                ]}>
+                  {plan.date.getDate()}
+                </Text>
+                {isToday && !isSelected && (
+                  <View style={styles.todayIndicator} />
                 )}
               </TouchableOpacity>
-            </Card>
-          ))}
+            );
+          })}
         </View>
 
-        {/* Recent Recipes */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Recipes</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
+        {/* Daily Meals Section */}
+        <View style={styles.dailyMealsSection}>
+          <View style={styles.dailyMealsHeader}>
+            <TouchableOpacity
+              style={[styles.navArrow, selectedDayIndex === 0 && styles.disabledArrow]}
+              onPress={handlePrevDay}
+              disabled={selectedDayIndex === 0}
+            >
+              <ChevronLeft size={20} color={selectedDayIndex === 0 ? '#E5E7EB' : '#6B7280'} />
+            </TouchableOpacity>
+            
+            <View style={styles.dailyMealsTitle}>
+              {isViewingToday ? (
+                <Text style={styles.todayTitle}>Today</Text>
+              ) : (
+                <Text style={styles.dailyMealsDate}>
+                  {selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </Text>
+              )}
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.navArrow, selectedDayIndex === 6 && styles.disabledArrow]}
+              onPress={handleNextDay}
+              disabled={selectedDayIndex === 6}
+            >
+              <ChevronRight size={20} color={selectedDayIndex === 6 ? '#E5E7EB' : '#6B7280'} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {sampleRecipes.slice(0, 3).map((recipe) => (
-              <Card key={recipe.id} style={styles.recipeCard}>
-                <Image
-                  source={{ uri: recipe.imageUrl }}
-                  style={styles.recipeCardImage}
-                />
-                <View style={styles.recipeCardContent}>
-                  <Text style={styles.recipeCardTitle} numberOfLines={2}>
-                    {recipe.title}
-                  </Text>
-                  <Text style={styles.recipeCardDetails}>
-                    {recipe.cookingTime} min • {recipe.difficulty}
-                  </Text>
-                </View>
-              </Card>
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleScrollEnd}
+            style={styles.mealsScrollView}
+          >
+            {weeklyMealPlans.map((plan, dayIndex) => (
+              <View key={dayIndex} style={[styles.dayMealsContainer, { width }]}>
+                {plan.meals.length > 0 ? (
+                  allMealTypes.map((mealType) => {
+                    const mealsOfType = plan.meals.filter(meal => meal.type === mealType);
+                    
+                    if (mealsOfType.length === 0) return null;
+
+                    return (
+                      <View key={mealType} style={styles.mealTypeSection}>
+                        <Text style={styles.mealTypeHeader}>
+                          {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+                        </Text>
+                        
+                        {mealsOfType.map((meal, mealIndex) => {
+                          const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
+                          
+                          return (
+                            <Card key={meal.id} style={styles.mealCard}>
+                              <View style={styles.mealContent}>
+                                {meal.recipe && (
+                                  <View style={styles.recipePreview}>
+                                    <Image
+                                      source={{ uri: meal.recipe.imageUrl }}
+                                      style={styles.recipeImage}
+                                    />
+                                    <View style={styles.recipeInfo}>
+                                      <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
+                                      <Text style={styles.recipeDetails}>
+                                        {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
+                                      </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                      style={styles.editButton}
+                                      onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                      <Pencil size={16} color="#9CA3AF" />
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
+                              </View>
+                            </Card>
+                          );
+                        })}
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.noMealsContainer}>
+                    <Text style={styles.noMealsText}>No meals planned for this day</Text>
+                    <Button
+                      title="Add Meal"
+                      onPress={() => {}}
+                      variant="outline"
+                      style={styles.addMealButton}
+                    />
+                  </View>
+                )}
+              </View>
             ))}
           </ScrollView>
         </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <Button
-              title="Plan This Week"
-              onPress={() => {}}
-              variant="primary"
-              style={styles.quickActionButton}
-            />
-            <Button
-              title="Add Recipe"
-              onPress={() => {}}
-              variant="outline"
-              style={styles.quickActionButton}
-            />
-          </View>
-        </View>
       </ScrollView>
+
+      {/* Edit Meal Modal */}
+      {currentMealEditInfo && (
+        <EditMealModal
+          visible={showEditMealModal}
+          meal={currentMealEditInfo.meal}
+          currentDayIndex={currentMealEditInfo.dayIndex}
+          allWeeklyMealPlans={weeklyMealPlans}
+          allMealTypes={allMealTypes}
+          onSave={handleSaveEditedMeal}
+          onClose={handleCloseEditMealModal}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -249,21 +318,9 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-  },
-  greeting: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  date: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginTop: 4,
   },
   profileButton: {
     width: 48,
@@ -273,38 +330,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
-  },
-  toggleButton: {
+  greetingContainer: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
     alignItems: 'center',
   },
-  activeToggle: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  toggleText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-  },
-  activeToggleText: {
+  greeting: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
     color: '#111827',
+  },
+  placeholder: {
+    width: 48,
   },
   weekContainer: {
     flexDirection: 'row',
@@ -318,9 +354,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
+    position: 'relative',
   },
   selectedDay: {
     backgroundColor: '#F97966',
+  },
+  todayDay: {
+    backgroundColor: '#FEF3F2',
+    borderWidth: 2,
+    borderColor: '#F97966',
   },
   dayName: {
     fontSize: 12,
@@ -336,28 +378,83 @@ const styles = StyleSheet.create({
   selectedDayText: {
     color: '#FFFFFF',
   },
-  section: {
+  todayDayText: {
+    color: '#F97966',
+  },
+  todayIndicator: {
+    position: 'absolute',
+    bottom: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#F97966',
+  },
+  dailyMealsSection: {
     marginBottom: 32,
   },
-  sectionHeader: {
+  dailyMealsHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 20,
+  navArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledArrow: {
+    backgroundColor: '#F9FAFB',
+  },
+  dailyMealsTitle: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  dailyMealsDate: {
+    fontSize: 18,
     fontFamily: 'Inter-Bold',
     color: '#111827',
   },
-  seeAllText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
+  todayTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
     color: '#F97966',
   },
+  mealsScrollView: {
+    flex: 1,
+  },
+  dayMealsContainer: {
+    paddingHorizontal: 20,
+  },
+  mealTypeSection: {
+    marginBottom: 24,
+  },
+  mealTypeHeader: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  noMealsContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  noMealsText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  addMealButton: {
+    paddingHorizontal: 24,
+  },
   mealCard: {
-    marginHorizontal: 20,
     marginBottom: 12,
   },
   mealContent: {
@@ -373,41 +470,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  mealEmoji: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  mealDetails: {
-    // No additional styles needed
-  },
-  mealType: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-  },
-  timeContainer: {
-    flexDirection: 'row',
+  editButton: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
-    marginTop: 4,
-  },
-  mealTime: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 4,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   recipePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'relative',
   },
   recipeImage: {
-    width: 60,
-    height: 60,
+    width: '100%',
+    height: 120,
     borderRadius: 12,
-    marginRight: 12,
+    marginBottom: 12,
   },
   recipeInfo: {
-    flex: 1,
+    paddingHorizontal: 4,
   },
   recipeTitle: {
     fontSize: 14,
@@ -419,38 +510,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-  },
-  recipeCard: {
-    width: 160,
-    marginLeft: 20,
-    marginRight: 8,
-  },
-  recipeCardImage: {
-    width: '100%',
-    height: 120,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  recipeCardContent: {
-    // No additional styles needed
-  },
-  recipeCardTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  recipeCardDetails: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  quickActionButton: {
-    flex: 1,
   },
 });
