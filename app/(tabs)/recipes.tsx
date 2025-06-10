@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, Save, CreditCard as Edit3, Trash2, ChevronRight } from 'lucide-react-native';
-import Card from '@/components/ui/Card';
+import Card from imp@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import { sampleRecipes } from '@/data/sampleData';
