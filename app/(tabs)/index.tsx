@@ -250,19 +250,6 @@ export default function HomeScreen() {
                           return (
                             <Card key={meal.id} style={styles.mealCard}>
                               <View style={styles.mealContent}>
-                                <View style={styles.mealHeader}>
-                                  <View style={styles.mealInfo}>
-                                    {/* Meal time removed as requested */}
-                                  </View>
-                                  <TouchableOpacity
-                                    style={styles.editButton}
-                                    onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                  >
-                                    <Pencil size={16} color="#9CA3AF" />
-                                  </TouchableOpacity>
-                                </View>
-
                                 {meal.recipe && (
                                   <View style={styles.recipePreview}>
                                     <Image
@@ -275,6 +262,13 @@ export default function HomeScreen() {
                                         {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
                                       </Text>
                                     </View>
+                                    <TouchableOpacity
+                                      style={styles.editButton}
+                                      onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                      <Pencil size={16} color="#9CA3AF" />
+                                    </TouchableOpacity>
                                   </View>
                                 )}
                               </View>
@@ -477,24 +471,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editButton: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   recipePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'relative',
   },
   recipeImage: {
-    width: 60,
-    height: 60,
+    width: '100%',
+    height: 120,
     borderRadius: 12,
-    marginRight: 12,
+    marginBottom: 12,
   },
   recipeInfo: {
-    flex: 1,
+    paddingHorizontal: 4,
   },
   recipeTitle: {
     fontSize: 14,
