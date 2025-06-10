@@ -32,8 +32,9 @@ export interface Recipe {
   instructions: string[];
   tags: string[];
   source?: string;
-  isFavorite: boolean;
+  rating?: number;
   notes?: string;
+  isFavorite: boolean;
   createdAt: Date;
 }
 
