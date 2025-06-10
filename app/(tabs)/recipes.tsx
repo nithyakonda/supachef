@@ -477,9 +477,11 @@ export default function RecipesScreen() {
           <View style={styles.carouselsContainer}>
             {renderCarousel('Recently Added', recentlyAdded)}
             {favoriteRecipes.length > 0 && renderCarousel('Your Favorites', favoriteRecipes)}
-            {Object.entries(recipesByTag).map(([tag, tagRecipes]) => 
-              renderCarousel(tag, tagRecipes)
-            )}
+            {Object.entries(recipesByTag).map(([tag, tagRecipes]) => (
+              <React.Fragment key={tag}>
+                {renderCarousel(tag, tagRecipes)}
+              </React.Fragment>
+            ))}
           </View>
         )}
 
