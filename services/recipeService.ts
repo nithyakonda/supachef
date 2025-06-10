@@ -119,7 +119,9 @@ const fetchWithProxy = async (url: string): Promise<string> => {
     return data.contents;
   } catch (error) {
     console.error('Error fetching with proxy:', error);
-    throw new Error('Failed to fetch URL content');
+    // Include the original error message for better debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    throw new Error(`Failed to fetch URL content: ${errorMessage}`);
   }
 };
 
