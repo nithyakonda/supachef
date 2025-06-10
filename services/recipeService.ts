@@ -92,199 +92,457 @@ const saveRecipes = (recipes: Recipe[]): void => {
   }
 };
 
+// CORS proxy for fetching external URLs
+const fetchWithProxy = async (url: string): Promise<string> => {
+  // Use a CORS proxy service to fetch external content
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  
+  try {
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.contents;
+  } catch (error) {
+    console.error('Error fetching with proxy:', error);
+    throw new Error('Failed to fetch URL content');
+  }
+};
+
+// Parse HTML content to extract recipe data
+const parseRecipeFromHTML = (html: string, url: string): Omit<Recipe, 'id' | 'createdAt'> => {
+  // Create a temporary DOM parser
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  // Try to extract JSON-LD structured data first
+  const jsonLdScripts = doc.querySelectorAll('script[type="application/ld+json"]');
+  for (const script of jsonLdScripts) {
+    try {
+      const data = JSON.parse(script.textContent || '');
+      const recipe = findRecipeInJsonLd(data);
+      if (recipe) {
+        return recipe;
+      }
+    } catch (error) {
+      console.log('Error parsing JSON-LD:', error);
+    }
+  }
+  
+  // Fallback to meta tags and structured markup
+  return extractFromMetaTags(doc, url);
+};
+
+// Find recipe data in JSON-LD structured data
+const findRecipeInJsonLd = (data: any): Omit<Recipe, 'id' | 'createdAt'> | null => {
+  // Handle arrays of structured data
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const recipe = findRecipeInJsonLd(item);
+      if (recipe) return recipe;
+    }
+    return null;
+  }
+  
+  // Check if this is a Recipe type
+  if (data['@type'] === 'Recipe' || (Array.isArray(data['@type']) && data['@type'].includes('Recipe'))) {
+    return {
+      title: data.name || 'Imported Recipe',
+      description: data.description || '',
+      imageUrl: extractImageUrl(data.image) || 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
+      cookingTime: parseTime(data.cookTime || data.totalTime) || 30,
+      servings: parseInt(data.recipeYield) || 4,
+      difficulty: 'Medium' as const,
+      calories: extractCalories(data.nutrition) || 0,
+      ingredients: parseIngredients(data.recipeIngredient || []),
+      instructions: parseInstructions(data.recipeInstructions || []),
+      tags: parseTags(data.recipeCategory, data.recipeCuisine, data.keywords),
+      isFavorite: false,
+      rating: 0,
+      notes: `Imported from: ${data.url || 'web'}`,
+      source: data.url
+    };
+  }
+  
+  // Recursively search in nested objects
+  if (typeof data === 'object' && data !== null) {
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        const recipe = findRecipeInJsonLd(data[key]);
+        if (recipe) return recipe;
+      }
+    }
+  }
+  
+  return null;
+};
+
+// Extract recipe from meta tags and page content
+const extractFromMetaTags = (doc: Document, url: string): Omit<Recipe, 'id' | 'createdAt'> => {
+  const getMetaContent = (property: string): string => {
+    const meta = doc.querySelector(`meta[property="${property}"], meta[name="${property}"]`);
+    return meta?.getAttribute('content') || '';
+  };
+  
+  const title = getMetaContent('og:title') || 
+                doc.querySelector('title')?.textContent || 
+                'Imported Recipe';
+  
+  const description = getMetaContent('og:description') || 
+                     getMetaContent('description') || 
+                     '';
+  
+  const imageUrl = getMetaContent('og:image') || 
+                   'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg';
+  
+  // Try to extract ingredients and instructions from common selectors
+  const ingredients = extractIngredientsFromDOM(doc);
+  const instructions = extractInstructionsFromDOM(doc);
+  
+  return {
+    title: title.trim(),
+    description: description.trim(),
+    imageUrl,
+    cookingTime: 30,
+    servings: 4,
+    difficulty: 'Medium',
+    calories: 0,
+    ingredients,
+    instructions,
+    tags: ['Imported'],
+    isFavorite: false,
+    rating: 0,
+    notes: `Imported from: ${url}`,
+    source: url
+  };
+};
+
+// Helper functions for parsing structured data
+const extractImageUrl = (image: any): string | null => {
+  if (typeof image === 'string') return image;
+  if (Array.isArray(image) && image.length > 0) {
+    return extractImageUrl(image[0]);
+  }
+  if (typeof image === 'object' && image.url) {
+    return image.url;
+  }
+  return null;
+};
+
+const parseTime = (timeStr: string): number => {
+  if (!timeStr) return 30;
+  
+  // Parse ISO 8601 duration (PT30M)
+  const match = timeStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (match) {
+    const hours = parseInt(match[1] || '0');
+    const minutes = parseInt(match[2] || '0');
+    return hours * 60 + minutes;
+  }
+  
+  // Parse simple number
+  const numMatch = timeStr.match(/(\d+)/);
+  return numMatch ? parseInt(numMatch[1]) : 30;
+};
+
+const extractCalories = (nutrition: any): number => {
+  if (!nutrition) return 0;
+  if (typeof nutrition === 'object' && nutrition.calories) {
+    return parseInt(nutrition.calories) || 0;
+  }
+  return 0;
+};
+
+const parseIngredients = (ingredients: any[]): Array<{name: string, amount: string, unit?: string}> => {
+  if (!Array.isArray(ingredients)) return [];
+  
+  return ingredients.map(ingredient => {
+    if (typeof ingredient === 'string') {
+      // Parse "2 cups flour" format
+      const parts = ingredient.trim().split(' ');
+      const amount = parts[0];
+      const unit = parts[1];
+      const name = parts.slice(2).join(' ');
+      
+      return {
+        name: name || ingredient,
+        amount: amount || '1',
+        unit: unit
+      };
+    }
+    
+    if (typeof ingredient === 'object') {
+      return {
+        name: ingredient.name || ingredient.text || 'Unknown ingredient',
+        amount: ingredient.amount || '1',
+        unit: ingredient.unit
+      };
+    }
+    
+    return { name: 'Unknown ingredient', amount: '1' };
+  });
+};
+
+const parseInstructions = (instructions: any[]): string[] => {
+  if (!Array.isArray(instructions)) return [];
+  
+  return instructions.map(instruction => {
+    if (typeof instruction === 'string') {
+      return instruction.trim();
+    }
+    
+    if (typeof instruction === 'object') {
+      return instruction.text || instruction.name || 'Follow recipe step';
+    }
+    
+    return 'Follow recipe step';
+  }).filter(step => step.length > 0);
+};
+
+const parseTags = (...tagSources: any[]): string[] => {
+  const tags = new Set<string>();
+  
+  tagSources.forEach(source => {
+    if (typeof source === 'string') {
+      tags.add(source);
+    } else if (Array.isArray(source)) {
+      source.forEach(tag => {
+        if (typeof tag === 'string') {
+          tags.add(tag);
+        }
+      });
+    }
+  });
+  
+  return Array.from(tags).filter(tag => tag.length > 0);
+};
+
+// Extract ingredients from DOM using common selectors
+const extractIngredientsFromDOM = (doc: Document): Array<{name: string, amount: string, unit?: string}> => {
+  const selectors = [
+    '.recipe-ingredient',
+    '.ingredient',
+    '[class*="ingredient"]',
+    '.recipe-ingredients li',
+    '.ingredients li'
+  ];
+  
+  for (const selector of selectors) {
+    const elements = doc.querySelectorAll(selector);
+    if (elements.length > 0) {
+      return Array.from(elements).map(el => {
+        const text = el.textContent?.trim() || '';
+        const parts = text.split(' ');
+        const amount = parts[0];
+        const unit = parts[1];
+        const name = parts.slice(2).join(' ');
+        
+        return {
+          name: name || text,
+          amount: amount || '1',
+          unit: unit
+        };
+      });
+    }
+  }
+  
+  return [{ name: 'See original recipe for ingredients', amount: '1' }];
+};
+
+// Extract instructions from DOM using common selectors
+const extractInstructionsFromDOM = (doc: Document): string[] => {
+  const selectors = [
+    '.recipe-instruction',
+    '.instruction',
+    '[class*="instruction"]',
+    '.recipe-instructions li',
+    '.instructions li',
+    '.recipe-directions li',
+    '.directions li'
+  ];
+  
+  for (const selector of selectors) {
+    const elements = doc.querySelectorAll(selector);
+    if (elements.length > 0) {
+      return Array.from(elements)
+        .map(el => el.textContent?.trim() || '')
+        .filter(text => text.length > 0);
+    }
+  }
+  
+  return ['See original recipe for instructions'];
+};
+
 // Extract recipe data from various URL types
 const extractRecipeFromUrl = async (url: string): Promise<Omit<Recipe, 'id' | 'createdAt'>> => {
   try {
-    // Handle Pinterest URLs
+    // Handle Pinterest URLs specially
     if (url.includes('pinterest.com')) {
       return await extractFromPinterest(url);
     }
     
-    // Handle other recipe sites
-    return await extractFromGenericSite(url);
+    // For other sites, fetch and parse HTML
+    const html = await fetchWithProxy(url);
+    return parseRecipeFromHTML(html, url);
   } catch (error) {
     console.error('Error extracting recipe:', error);
-    throw new Error('Failed to extract recipe from URL');
+    throw new Error('Failed to extract recipe from URL. Please check the URL and try again.');
   }
 };
 
 // Extract recipe from Pinterest
 const extractFromPinterest = async (url: string): Promise<Omit<Recipe, 'id' | 'createdAt'>> => {
-  // For Pinterest URLs, we'll create a recipe based on the pin
-  // In a real implementation, you'd use Pinterest API or web scraping
-  
-  const pinId = url.match(/pin\/(\d+)/)?.[1];
-  
-  // Mock Pinterest recipe data based on the specific URL provided
-  if (url.includes('214343263513099668')) {
+  try {
+    // Fetch Pinterest page content
+    const html = await fetchWithProxy(url);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Pinterest stores data in script tags
+    const scripts = doc.querySelectorAll('script');
+    let pinterestData: any = null;
+    
+    for (const script of scripts) {
+      const content = script.textContent || '';
+      if (content.includes('"Pin"') && content.includes('"description"')) {
+        try {
+          // Extract JSON data from Pinterest's script tags
+          const jsonMatch = content.match(/\{.*"Pin".*\}/);
+          if (jsonMatch) {
+            pinterestData = JSON.parse(jsonMatch[0]);
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+    
+    if (pinterestData && pinterestData.Pin) {
+      const pin = pinterestData.Pin;
+      const description = pin.description || '';
+      const imageUrl = pin.images?.['736x']?.url || pin.images?.orig?.url || 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg';
+      
+      // Try to extract recipe info from description
+      const title = extractTitleFromDescription(description) || 'Pinterest Recipe';
+      const { ingredients, instructions } = parseRecipeFromDescription(description);
+      
+      return {
+        title,
+        description: description.substring(0, 200) + (description.length > 200 ? '...' : ''),
+        imageUrl,
+        cookingTime: 30,
+        servings: 4,
+        difficulty: 'Medium',
+        calories: 0,
+        ingredients,
+        instructions,
+        tags: ['Pinterest', 'Imported'],
+        isFavorite: false,
+        rating: 0,
+        notes: `Imported from Pinterest: ${url}`,
+        source: url
+      };
+    }
+    
+    // Fallback to meta tag extraction
+    return extractFromMetaTags(doc, url);
+  } catch (error) {
+    console.error('Error extracting from Pinterest:', error);
+    
+    // Ultimate fallback for Pinterest
     return {
-      title: 'Creamy Chicken and Rice Casserole',
-      description: 'A comforting one-dish meal with tender chicken, creamy rice, and vegetables baked to perfection.',
-      imageUrl: 'https://images.pexels.com/photos/8477434/pexels-photo-8477434.jpeg',
-      cookingTime: 45,
-      servings: 6,
-      difficulty: 'Easy',
-      calories: 380,
-      ingredients: [
-        { name: 'Chicken breast', amount: '2', unit: 'lbs' },
-        { name: 'White rice', amount: '1', unit: 'cup' },
-        { name: 'Chicken broth', amount: '2', unit: 'cups' },
-        { name: 'Cream of mushroom soup', amount: '1', unit: 'can' },
-        { name: 'Mixed vegetables', amount: '1', unit: 'cup' },
-        { name: 'Cheddar cheese', amount: '1', unit: 'cup' },
-        { name: 'Salt', amount: '1', unit: 'tsp' },
-        { name: 'Black pepper', amount: '1/2', unit: 'tsp' },
-        { name: 'Garlic powder', amount: '1', unit: 'tsp' }
-      ],
-      instructions: [
-        'Preheat oven to 350°F (175°C)',
-        'Cut chicken into bite-sized pieces and season with salt, pepper, and garlic powder',
-        'In a large casserole dish, combine rice, chicken broth, and cream of mushroom soup',
-        'Add chicken pieces and mixed vegetables to the dish',
-        'Cover tightly with foil and bake for 35 minutes',
-        'Remove foil, sprinkle cheese on top, and bake uncovered for 10 more minutes',
-        'Let rest for 5 minutes before serving'
-      ],
-      tags: ['Comfort Food', 'Casserole', 'Family Dinner', 'One-Dish'],
+      title: 'Pinterest Recipe',
+      description: 'Recipe imported from Pinterest',
+      imageUrl: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
+      cookingTime: 30,
+      servings: 4,
+      difficulty: 'Medium',
+      calories: 0,
+      ingredients: [{ name: 'See original pin for ingredients', amount: '1' }],
+      instructions: ['See original pin for instructions'],
+      tags: ['Pinterest', 'Imported'],
       isFavorite: false,
       rating: 0,
       notes: `Imported from Pinterest: ${url}`,
       source: url
     };
   }
-  
-  // Generic Pinterest recipe fallback
-  return {
-    title: 'Pinterest Recipe',
-    description: 'Delicious recipe imported from Pinterest',
-    imageUrl: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
-    cookingTime: 30,
-    servings: 4,
-    difficulty: 'Medium',
-    calories: 350,
-    ingredients: [
-      { name: 'Main ingredient', amount: '2', unit: 'cups' },
-      { name: 'Secondary ingredient', amount: '1', unit: 'cup' },
-      { name: 'Seasoning', amount: '1', unit: 'tsp' }
-    ],
-    instructions: [
-      'Prepare all ingredients',
-      'Follow cooking method',
-      'Serve and enjoy'
-    ],
-    tags: ['Pinterest', 'Imported'],
-    isFavorite: false,
-    rating: 0,
-    notes: `Imported from Pinterest: ${url}`,
-    source: url
-  };
 };
 
-// Extract recipe from generic recipe sites
-const extractFromGenericSite = async (url: string): Promise<Omit<Recipe, 'id' | 'createdAt'>> => {
-  // In a real implementation, you would:
-  // 1. Fetch the webpage content
-  // 2. Parse JSON-LD structured data for recipes
-  // 3. Extract recipe information from meta tags
-  // 4. Use recipe schema.org markup
+// Helper functions for Pinterest parsing
+const extractTitleFromDescription = (description: string): string => {
+  // Look for common title patterns in Pinterest descriptions
+  const lines = description.split('\n');
+  const firstLine = lines[0].trim();
   
-  const domain = new URL(url).hostname;
+  // If first line looks like a title (not too long, has capital letters)
+  if (firstLine.length < 100 && /[A-Z]/.test(firstLine)) {
+    return firstLine;
+  }
   
-  // Mock data based on common recipe sites
-  const siteRecipes: Record<string, Omit<Recipe, 'id' | 'createdAt'>> = {
-    'allrecipes.com': {
-      title: 'Classic Chocolate Chip Cookies',
-      description: 'The perfect chocolate chip cookie recipe that everyone loves',
-      imageUrl: 'https://images.pexels.com/photos/230325/pexels-photo-230325.jpeg',
-      cookingTime: 25,
-      servings: 24,
-      difficulty: 'Easy',
-      calories: 180,
-      ingredients: [
-        { name: 'All-purpose flour', amount: '2 1/4', unit: 'cups' },
-        { name: 'Baking soda', amount: '1', unit: 'tsp' },
-        { name: 'Salt', amount: '1', unit: 'tsp' },
-        { name: 'Butter', amount: '1', unit: 'cup' },
-        { name: 'Brown sugar', amount: '3/4', unit: 'cup' },
-        { name: 'White sugar', amount: '3/4', unit: 'cup' },
-        { name: 'Eggs', amount: '2', unit: 'large' },
-        { name: 'Vanilla extract', amount: '2', unit: 'tsp' },
-        { name: 'Chocolate chips', amount: '2', unit: 'cups' }
-      ],
-      instructions: [
-        'Preheat oven to 375°F (190°C)',
-        'Mix flour, baking soda, and salt in a bowl',
-        'Cream butter and sugars until fluffy',
-        'Beat in eggs and vanilla',
-        'Gradually add flour mixture',
-        'Stir in chocolate chips',
-        'Drop rounded tablespoons onto ungreased cookie sheets',
-        'Bake 9-11 minutes until golden brown'
-      ],
-      tags: ['Dessert', 'Cookies', 'Baking', 'Classic'],
-      isFavorite: false,
-      rating: 0,
-      notes: `Imported from ${domain}`,
-      source: url
-    },
-    'foodnetwork.com': {
-      title: 'Grilled Salmon with Lemon Herb Butter',
-      description: 'Perfectly grilled salmon with a flavorful herb butter sauce',
-      imageUrl: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg',
-      cookingTime: 20,
-      servings: 4,
-      difficulty: 'Medium',
-      calories: 320,
-      ingredients: [
-        { name: 'Salmon fillets', amount: '4', unit: '6-oz pieces' },
-        { name: 'Butter', amount: '4', unit: 'tbsp' },
-        { name: 'Lemon juice', amount: '2', unit: 'tbsp' },
-        { name: 'Fresh dill', amount: '2', unit: 'tbsp' },
-        { name: 'Fresh parsley', amount: '2', unit: 'tbsp' },
-        { name: 'Garlic', amount: '2', unit: 'cloves' },
-        { name: 'Salt', amount: '1', unit: 'tsp' },
-        { name: 'Black pepper', amount: '1/2', unit: 'tsp' }
-      ],
-      instructions: [
-        'Preheat grill to medium-high heat',
-        'Season salmon with salt and pepper',
-        'Mix butter, lemon juice, herbs, and garlic',
-        'Grill salmon 4-5 minutes per side',
-        'Top with herb butter before serving'
-      ],
-      tags: ['Seafood', 'Grilled', 'Healthy', 'Quick'],
-      isFavorite: false,
-      rating: 0,
-      notes: `Imported from ${domain}`,
-      source: url
+  // Look for recipe-like patterns
+  const recipeMatch = description.match(/^([^.!?]+(?:recipe|dish|meal|food))/i);
+  if (recipeMatch) {
+    return recipeMatch[1].trim();
+  }
+  
+  return firstLine || 'Pinterest Recipe';
+};
+
+const parseRecipeFromDescription = (description: string): {
+  ingredients: Array<{name: string, amount: string, unit?: string}>,
+  instructions: string[]
+} => {
+  const lines = description.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  const ingredients: Array<{name: string, amount: string, unit?: string}> = [];
+  const instructions: string[] = [];
+  
+  let currentSection: 'none' | 'ingredients' | 'instructions' = 'none';
+  
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+    
+    // Detect section headers
+    if (lowerLine.includes('ingredient') || lowerLine.includes('what you need')) {
+      currentSection = 'ingredients';
+      continue;
+    } else if (lowerLine.includes('instruction') || lowerLine.includes('direction') || lowerLine.includes('step')) {
+      currentSection = 'instructions';
+      continue;
     }
-  };
+    
+    // Parse based on current section
+    if (currentSection === 'ingredients' || (currentSection === 'none' && /^\d+/.test(line))) {
+      // Looks like an ingredient line
+      const parts = line.split(' ');
+      const amount = parts[0];
+      const unit = parts[1];
+      const name = parts.slice(2).join(' ');
+      
+      ingredients.push({
+        name: name || line,
+        amount: amount || '1',
+        unit: unit
+      });
+    } else if (currentSection === 'instructions' || (currentSection === 'none' && line.length > 20)) {
+      // Looks like an instruction
+      instructions.push(line);
+    }
+  }
   
-  // Return site-specific recipe or generic fallback
-  return siteRecipes[domain] || {
-    title: `Recipe from ${domain}`,
-    description: 'Delicious recipe imported from the web',
-    imageUrl: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
-    cookingTime: 30,
-    servings: 4,
-    difficulty: 'Medium',
-    calories: 350,
-    ingredients: [
-      { name: 'Main ingredient', amount: '2', unit: 'cups' },
-      { name: 'Secondary ingredient', amount: '1', unit: 'cup' },
-      { name: 'Seasoning', amount: '1', unit: 'tsp' }
-    ],
-    instructions: [
-      'Prepare ingredients according to recipe',
-      'Follow cooking instructions',
-      'Serve and enjoy'
-    ],
-    tags: ['Imported', 'Web Recipe'],
-    isFavorite: false,
-    rating: 0,
-    notes: `Imported from ${url}`,
-    source: url
-  };
+  // If no structured data found, provide fallback
+  if (ingredients.length === 0) {
+    ingredients.push({ name: 'See original pin for ingredients', amount: '1' });
+  }
+  
+  if (instructions.length === 0) {
+    instructions.push('See original pin for instructions');
+  }
+  
+  return { ingredients, instructions };
 };
 
 // Recipe service functions
@@ -417,8 +675,8 @@ export const recipeService = {
       throw new Error('Invalid URL provided');
     }
 
-    // Simulate loading delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate loading delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Extract recipe data from URL
     const recipeData = await extractRecipeFromUrl(url);
