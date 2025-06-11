@@ -17,6 +17,7 @@ import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
 import { Meal, MealPlan } from '../../types';
 
 const { width } = Dimensions.get('window');
+const MEAL_CARD_CAROUSEL_WIDTH = width * 0.75; // 75% of screen width to show part of next card
 
 export default function HomeScreen() {
   const [weeklyMealPlans, setWeeklyMealPlans] = useState<MealPlan[]>(() => generateSampleWeeklyMealPlans());
@@ -244,37 +245,83 @@ export default function HomeScreen() {
                           {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
                         </Text>
                         
-                        {mealsOfType.map((meal, mealIndex) => {
-                          const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
-                          
-                          return (
-                            <Card key={meal.id} style={styles.mealCard}>
-                              <View style={styles.mealContent}>
-                                {meal.recipe && (
-                                  <View style={styles.recipePreview}>
-                                    <Image
-                                      source={{ uri: meal.recipe.imageUrl }}
-                                      style={styles.recipeImage}
-                                    />
-                                    <View style={styles.recipeInfo}>
-                                      <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
-                                      <Text style={styles.recipeDetails}>
-                                        {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
-                                      </Text>
+                        {mealsOfType.length === 1 ? (
+                          // Single meal card - full width
+                          (() => {
+                            const meal = mealsOfType[0];
+                            const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
+                            
+                            return (
+                              <Card key={meal.id} style={styles.mealCard}>
+                                <View style={styles.mealContent}>
+                                  {meal.recipe && (
+                                    <View style={styles.recipePreview}>
+                                      <Image
+                                        source={{ uri: meal.recipe.imageUrl }}
+                                        style={styles.recipeImage}
+                                      />
+                                      <View style={styles.recipeInfo}>
+                                        <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
+                                        <Text style={styles.recipeDetails}>
+                                          {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
+                                        </Text>
+                                      </View>
+                                      <TouchableOpacity
+                                        style={styles.editButton}
+                                        onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                      >
+                                        <Pencil size={16} color="#9CA3AF" />
+                                      </TouchableOpacity>
                                     </View>
-                                    <TouchableOpacity
-                                      style={styles.editButton}
-                                      onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
-                                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                    >
-                                      <Pencil size={16} color="#9CA3AF" />
-                                    </TouchableOpacity>
+                                  )}
+                                </View>
+                              </Card>
+                            );
+                          })()
+                        ) : (
+                          // Multiple meal cards - horizontal carousel
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.mealCardsCarouselContent}
+                            style={styles.mealCardsCarousel}
+                          >
+                            {mealsOfType.map((meal, mealIndex) => {
+                              const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
+                              
+                              return (
+                                <Card key={meal.id} style={styles.mealCardCarousel}>
+                                  <View style={styles.mealContent}>
+                                    {meal.recipe && (
+                                      <View style={styles.recipePreview}>
+                                        <Image
+                                          source={{ uri: meal.recipe.imageUrl }}
+                                          style={styles.recipeImageCarousel}
+                                        />
+                                        <View style={styles.recipeInfo}>
+                                          <Text style={styles.recipeTitle} numberOfLines={2}>
+                                            {meal.recipe.title}
+                                          </Text>
+                                          <Text style={styles.recipeDetails}>
+                                            {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
+                                          </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                          style={styles.editButton}
+                                          onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        >
+                                          <Pencil size={16} color="#9CA3AF" />
+                                        </TouchableOpacity>
+                                      </View>
+                                    )}
                                   </View>
-                                )}
-                              </View>
-                            </Card>
-                          );
-                        })}
+                                </Card>
+                              );
+                            })}
+                          </ScrollView>
+                        )}
                       </View>
                     );
                   })
@@ -497,6 +544,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
+  recipeImageCarousel: {
+    width: '100%',
+    height: 100,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
   recipeInfo: {
     paddingHorizontal: 4,
   },
@@ -510,5 +563,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+  },
+  // New carousel styles
+  mealCardsCarousel: {
+    marginHorizontal: -20, // Offset the container padding
+  },
+  mealCardsCarouselContent: {
+    paddingHorizontal: 20,
+    paddingRight: 40, // Extra padding at the end
+  },
+  mealCardCarousel: {
+    width: MEAL_CARD_CAROUSEL_WIDTH,
+    marginRight: 16,
+    marginBottom: 12,
   },
 });
