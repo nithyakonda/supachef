@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Recipe } from '@/types';
 
 // Mock data for development
@@ -58,15 +59,13 @@ const MOCK_RECIPES: Recipe[] = [
   }
 ];
 
-// Storage key for localStorage
+// Storage key for AsyncStorage
 const STORAGE_KEY = 'supachef_recipes';
 
-// Get recipes from localStorage or return mock data
-const getStoredRecipes = (): Recipe[] => {
-  if (typeof window === 'undefined') return MOCK_RECIPES;
-  
+// Get recipes from AsyncStorage or return mock data
+const getStoredRecipes = async (): Promise<Recipe[]> => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = await AsyncStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return parsed.map((recipe: any) => ({
@@ -81,12 +80,10 @@ const getStoredRecipes = (): Recipe[] => {
   return MOCK_RECIPES;
 };
 
-// Save recipes to localStorage
-const saveRecipes = (recipes: Recipe[]): void => {
-  if (typeof window === 'undefined') return;
-  
+// Save recipes to AsyncStorage
+const saveRecipes = async (recipes: Recipe[]): Promise<void> => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
   } catch (error) {
     console.error('Error saving recipes to storage:', error);
   }
@@ -563,19 +560,19 @@ const parseRecipeFromDescription = (description: string): {
 // Recipe service functions
 export const recipeService = {
   // Get all recipes
-  getAllRecipes: (): Recipe[] => {
-    return getStoredRecipes();
+  getAllRecipes: async (): Promise<Recipe[]> => {
+    return await getStoredRecipes();
   },
 
   // Get recipe by ID
-  getRecipeById: (id: string): Recipe | undefined => {
-    const recipes = getStoredRecipes();
+  getRecipeById: async (id: string): Promise<Recipe | undefined> => {
+    const recipes = await getStoredRecipes();
     return recipes.find(recipe => recipe.id === id);
   },
 
   // Save recipe (create or update)
-  saveRecipe: (recipe: Recipe): Recipe => {
-    const recipes = getStoredRecipes();
+  saveRecipe: async (recipe: Recipe): Promise<Recipe> => {
+    const recipes = await getStoredRecipes();
     const existingIndex = recipes.findIndex(r => r.id === recipe.id);
     
     if (existingIndex >= 0) {
@@ -584,13 +581,13 @@ export const recipeService = {
       recipes.unshift(recipe);
     }
     
-    saveRecipes(recipes);
+    await saveRecipes(recipes);
     return recipe;
   },
 
   // Create new recipe
-  createRecipe: (recipeData: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
-    const recipes = getStoredRecipes();
+  createRecipe: async (recipeData: Omit<Recipe, 'id' | 'createdAt'>): Promise<Recipe> => {
+    const recipes = await getStoredRecipes();
     const newRecipe: Recipe = {
       ...recipeData,
       id: Date.now().toString(),
@@ -598,48 +595,48 @@ export const recipeService = {
     };
     
     const updatedRecipes = [newRecipe, ...recipes];
-    saveRecipes(updatedRecipes);
+    await saveRecipes(updatedRecipes);
     return newRecipe;
   },
 
   // Update existing recipe
-  updateRecipe: (recipe: Recipe): Recipe => {
-    const recipes = getStoredRecipes();
+  updateRecipe: async (recipe: Recipe): Promise<Recipe> => {
+    const recipes = await getStoredRecipes();
     const index = recipes.findIndex(r => r.id === recipe.id);
     
     if (index >= 0) {
       recipes[index] = recipe;
-      saveRecipes(recipes);
+      await saveRecipes(recipes);
     }
     
     return recipe;
   },
 
   // Delete recipe
-  deleteRecipe: (id: string): boolean => {
-    const recipes = getStoredRecipes();
+  deleteRecipe: async (id: string): Promise<boolean> => {
+    const recipes = await getStoredRecipes();
     const filteredRecipes = recipes.filter(recipe => recipe.id !== id);
     
     if (filteredRecipes.length === recipes.length) return false;
     
-    saveRecipes(filteredRecipes);
+    await saveRecipes(filteredRecipes);
     return true;
   },
 
   // Toggle favorite status
-  toggleFavorite: (id: string): Recipe | null => {
-    const recipes = getStoredRecipes();
+  toggleFavorite: async (id: string): Promise<Recipe | null> => {
+    const recipes = await getStoredRecipes();
     const recipe = recipes.find(r => r.id === id);
     
     if (!recipe) return null;
     
     const updatedRecipe = { ...recipe, isFavorite: !recipe.isFavorite };
-    return recipeService.updateRecipe(updatedRecipe);
+    return await recipeService.updateRecipe(updatedRecipe);
   },
 
   // Search recipes
-  searchRecipes: (query: string): Recipe[] => {
-    const recipes = getStoredRecipes();
+  searchRecipes: async (query: string): Promise<Recipe[]> => {
+    const recipes = await getStoredRecipes();
     const lowercaseQuery = query.toLowerCase();
     
     return recipes.filter(recipe =>
@@ -653,30 +650,30 @@ export const recipeService = {
   },
 
   // Get recipes by tag
-  getRecipesByTag: (tag: string): Recipe[] => {
-    const recipes = getStoredRecipes();
+  getRecipesByTag: async (tag: string): Promise<Recipe[]> => {
+    const recipes = await getStoredRecipes();
     return recipes.filter(recipe => 
       recipe.tags.some(t => t.toLowerCase() === tag.toLowerCase())
     );
   },
 
   // Get favorite recipes
-  getFavoriteRecipes: (): Recipe[] => {
-    const recipes = getStoredRecipes();
+  getFavoriteRecipes: async (): Promise<Recipe[]> => {
+    const recipes = await getStoredRecipes();
     return recipes.filter(recipe => recipe.isFavorite);
   },
 
   // Get recently added recipes
-  getRecentRecipes: (limit: number = 10): Recipe[] => {
-    const recipes = getStoredRecipes();
+  getRecentRecipes: async (limit: number = 10): Promise<Recipe[]> => {
+    const recipes = await getStoredRecipes();
     return recipes
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit);
   },
 
   // Get all unique tags
-  getAllTags: (): string[] => {
-    const recipes = getStoredRecipes();
+  getAllTags: async (): Promise<string[]> => {
+    const recipes = await getStoredRecipes();
     const allTags = recipes.flatMap(recipe => recipe.tags);
     return Array.from(new Set(allTags)).sort();
   },
@@ -697,7 +694,7 @@ export const recipeService = {
     const recipeData = await extractRecipeFromUrl(url);
     
     // Create and save the recipe
-    return recipeService.createRecipe(recipeData);
+    return await recipeService.createRecipe(recipeData);
   }
 };
 
