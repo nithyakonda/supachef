@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, Pencil, Plus, User } from 'lucide-react-native';
@@ -134,46 +133,6 @@ export default function HomeScreen() {
     setCurrentMealEditInfo(null);
   };
 
-  const renderMealCard = (meal: Meal, dayIndex: number, isCarousel: boolean = false) => {
-    const originalMealIndex = weeklyMealPlans[dayIndex].meals.findIndex(m => m.id === meal.id);
-    
-    return (
-      <Card 
-        key={meal.id} 
-        style={isCarousel ? styles.mealCardCarousel : styles.mealCard}
-      >
-        <View style={styles.mealContent}>
-          {meal.recipe && (
-            <View style={styles.recipePreview}>
-              <Image
-                source={{ uri: meal.recipe.imageUrl }}
-                style={isCarousel ? styles.recipeImageCarousel : styles.recipeImage}
-              />
-              <View style={styles.recipeInfo}>
-                <Text 
-                  style={styles.recipeTitle} 
-                  numberOfLines={isCarousel ? 2 : undefined}
-                >
-                  {meal.recipe.title}
-                </Text>
-                <Text style={styles.recipeDetails}>
-                  {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Pencil size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Card>
-    );
-  };
-
   const selectedPlan = weeklyMealPlans[selectedDayIndex];
   const selectedDate = selectedPlan.date;
   const isViewingToday = selectedDayIndex === todayIndex;
@@ -288,18 +247,80 @@ export default function HomeScreen() {
                         
                         {mealsOfType.length === 1 ? (
                           // Single meal card - full width
-                          renderMealCard(mealsOfType[0], dayIndex, false)
+                          (() => {
+                            const meal = mealsOfType[0];
+                            const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
+                            
+                            return (
+                              <Card key={meal.id} style={styles.mealCard}>
+                                <View style={styles.mealContent}>
+                                  {meal.recipe && (
+                                    <View style={styles.recipePreview}>
+                                      <Image
+                                        source={{ uri: meal.recipe.imageUrl }}
+                                        style={styles.recipeImage}
+                                      />
+                                      <View style={styles.recipeInfo}>
+                                        <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
+                                        <Text style={styles.recipeDetails}>
+                                          {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
+                                        </Text>
+                                      </View>
+                                      <TouchableOpacity
+                                        style={styles.editButton}
+                                        onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                      >
+                                        <Pencil size={16} color="#9CA3AF" />
+                                      </TouchableOpacity>
+                                    </View>
+                                  )}
+                                </View>
+                              </Card>
+                            );
+                          })()
                         ) : (
-                          // Multiple meal cards - horizontal carousel using FlatList
-                          <FlatList
+                          // Multiple meal cards - horizontal carousel
+                          <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            data={mealsOfType}
-                            keyExtractor={(meal) => meal.id}
-                            renderItem={({ item: meal }) => renderMealCard(meal, dayIndex, true)}
                             contentContainerStyle={styles.mealCardsCarouselContent}
-                            ItemSeparatorComponent={() => <View style={{ width: 16 }} />}
-                          />
+                            style={styles.mealCardsCarousel}
+                          >
+                            {mealsOfType.map((meal, mealIndex) => {
+                              const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
+                              
+                              return (
+                                <Card key={meal.id} style={styles.mealCardCarousel}>
+                                  <View style={styles.mealContent}>
+                                    {meal.recipe && (
+                                      <View style={styles.recipePreview}>
+                                        <Image
+                                          source={{ uri: meal.recipe.imageUrl }}
+                                          style={styles.recipeImageCarousel}
+                                        />
+                                        <View style={styles.recipeInfo}>
+                                          <Text style={styles.recipeTitle} numberOfLines={2}>
+                                            {meal.recipe.title}
+                                          </Text>
+                                          <Text style={styles.recipeDetails}>
+                                            {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
+                                          </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                          style={styles.editButton}
+                                          onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        >
+                                          <Pencil size={16} color="#9CA3AF" />
+                                        </TouchableOpacity>
+                                      </View>
+                                    )}
+                                  </View>
+                                </Card>
+                              );
+                            })}
+                          </ScrollView>
                         )}
                       </View>
                     );
@@ -543,13 +564,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
-  // Carousel styles
+  // New carousel styles
+  mealCardsCarousel: {
+    marginHorizontal: -20, // Offset the container padding
+  },
   mealCardsCarouselContent: {
     paddingHorizontal: 20,
     paddingRight: 40, // Extra padding at the end
   },
   mealCardCarousel: {
     width: MEAL_CARD_CAROUSEL_WIDTH,
+    marginRight: 16,
     marginBottom: 12,
   },
 });
