@@ -9,15 +9,15 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Pencil, Plus, User } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Pencil, Plus, User, Heart } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EditMealModal from '../../components/ui/EditMealModal';
 import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
 import { Meal, MealPlan } from '../../types';
+import { recipeService } from '../../services/recipeService';
 
 const { width } = Dimensions.get('window');
-const MEAL_CARD_CAROUSEL_WIDTH = width * 0.75; // 75% of screen width to show part of next card
 
 export default function HomeScreen() {
   const [weeklyMealPlans, setWeeklyMealPlans] = useState<MealPlan[]>(() => generateSampleWeeklyMealPlans());
@@ -32,12 +32,19 @@ export default function HomeScreen() {
     dayIndex: number;
     mealIndex: number;
   } | null>(null);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const allMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
   const today = new Date();
   const todayIndex = today.getDay();
+
+  // Load favorite recipes on component mount
+  useEffect(() => {
+    const favoriteRecipes = recipeService.getFavoriteRecipes();
+    setFavorites(favoriteRecipes.map(recipe => recipe.id));
+  }, []);
 
   // Initial scroll to today's meals
   useEffect(() => {
@@ -90,6 +97,37 @@ export default function HomeScreen() {
   const handleEditMeal = (meal: Meal, dayIndex: number, mealIndex: number) => {
     setCurrentMealEditInfo({ meal, dayIndex, mealIndex });
     setShowEditMealModal(true);
+  };
+
+  const toggleFavorite = async (recipeId: string) => {
+    try {
+      // Toggle favorite in recipe service
+      const updatedRecipe = recipeService.toggleFavorite(recipeId);
+      
+      if (updatedRecipe) {
+        // Update local favorites state
+        setFavorites(prev => 
+          updatedRecipe.isFavorite 
+            ? [...prev, recipeId]
+            : prev.filter(id => id !== recipeId)
+        );
+      } else {
+        // Recipe not found in recipe book, add it first
+        const mealRecipe = weeklyMealPlans
+          .flatMap(plan => plan.meals)
+          .find(meal => meal.recipe?.id === recipeId)?.recipe;
+        
+        if (mealRecipe) {
+          const savedRecipe = recipeService.saveRecipe({
+            ...mealRecipe,
+            isFavorite: true
+          });
+          setFavorites(prev => [...prev, savedRecipe.id]);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   const handleSaveEditedMeal = (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => {
@@ -245,10 +283,9 @@ export default function HomeScreen() {
                           {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
                         </Text>
                         
-                        {mealsOfType.length === 1 ? (
-                          // Single meal card - full width
-                          (() => {
-                            const meal = mealsOfType[0];
+                        {/* Stack all meal cards vertically */}
+                        <View style={styles.mealCardsContainer}>
+                          {mealsOfType.map((meal) => {
                             const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
                             
                             return (
@@ -260,10 +297,20 @@ export default function HomeScreen() {
                                         source={{ uri: meal.recipe.imageUrl }}
                                         style={styles.recipeImage}
                                       />
+                                      <TouchableOpacity
+                                        style={styles.favoriteButton}
+                                        onPress={() => toggleFavorite(meal.recipe!.id)}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                      >
+                                        <Heart
+                                          size={18}
+                                          color={favorites.includes(meal.recipe.id) ? '#F97966' : '#FFFFFF'}
+                                          fill={favorites.includes(meal.recipe.id) ? '#F97966' : 'none'}
+                                        />
+                                      </TouchableOpacity>
                                       <View style={styles.recipeInfo}>
-                                        <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
-                                        <Text style={styles.recipeDetails}>
-                                          {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
+                                        <Text style={styles.recipeTitle}>
+                                          {meal.recipe.title}
                                         </Text>
                                       </View>
                                       <TouchableOpacity
@@ -278,50 +325,8 @@ export default function HomeScreen() {
                                 </View>
                               </Card>
                             );
-                          })()
-                        ) : (
-                          // Multiple meal cards - horizontal carousel
-                          <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.mealCardsCarouselContent}
-                            style={styles.mealCardsCarousel}
-                          >
-                            {mealsOfType.map((meal, mealIndex) => {
-                              const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
-                              
-                              return (
-                                <Card key={meal.id} style={styles.mealCardCarousel}>
-                                  <View style={styles.mealContent}>
-                                    {meal.recipe && (
-                                      <View style={styles.recipePreview}>
-                                        <Image
-                                          source={{ uri: meal.recipe.imageUrl }}
-                                          style={styles.recipeImageCarousel}
-                                        />
-                                        <View style={styles.recipeInfo}>
-                                          <Text style={styles.recipeTitle} numberOfLines={2}>
-                                            {meal.recipe.title}
-                                          </Text>
-                                          <Text style={styles.recipeDetails}>
-                                            {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
-                                          </Text>
-                                        </View>
-                                        <TouchableOpacity
-                                          style={styles.editButton}
-                                          onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
-                                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        >
-                                          <Pencil size={16} color="#9CA3AF" />
-                                        </TouchableOpacity>
-                                      </View>
-                                    )}
-                                  </View>
-                                </Card>
-                              );
-                            })}
-                          </ScrollView>
-                        )}
+                          })}
+                        </View>
                       </View>
                     );
                   })
@@ -487,6 +492,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 4,
   },
+  mealCardsContainer: {
+    gap: 12,
+  },
   noMealsContainer: {
     alignItems: 'center',
     paddingVertical: 48,
@@ -502,20 +510,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   mealCard: {
-    marginBottom: 12,
+    marginBottom: 0,
   },
   mealContent: {
     // No additional styles needed
   },
-  mealHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  recipePreview: {
+    position: 'relative',
+  },
+  recipeImage: {
+    width: '100%',
+    height: 80,
+    borderRadius: 12,
     marginBottom: 12,
   },
-  mealInfo: {
-    flexDirection: 'row',
+  favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recipeInfo: {
+    paddingHorizontal: 4,
+  },
+  recipeTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 4,
   },
   editButton: {
     position: 'absolute',
@@ -534,47 +561,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-  },
-  recipePreview: {
-    position: 'relative',
-  },
-  recipeImage: {
-    width: '100%',
-    height: 120,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  recipeImageCarousel: {
-    width: '100%',
-    height: 100,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  recipeInfo: {
-    paddingHorizontal: 4,
-  },
-  recipeTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  recipeDetails: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  // New carousel styles
-  mealCardsCarousel: {
-    marginHorizontal: -20, // Offset the container padding
-  },
-  mealCardsCarouselContent: {
-    paddingHorizontal: 20,
-    paddingRight: 40, // Extra padding at the end
-  },
-  mealCardCarousel: {
-    width: MEAL_CARD_CAROUSEL_WIDTH,
-    marginRight: 16,
-    marginBottom: 12,
   },
 });
