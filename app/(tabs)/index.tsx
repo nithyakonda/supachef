@@ -297,29 +297,38 @@ export default function HomeScreen() {
                                         source={{ uri: meal.recipe.imageUrl }}
                                         style={styles.recipeImage}
                                       />
-                                      <TouchableOpacity
-                                        style={styles.favoriteButton}
-                                        onPress={() => toggleFavorite(meal.recipe!.id)}
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                      >
-                                        <Heart
-                                          size={18}
-                                          color={favorites.includes(meal.recipe.id) ? '#F97966' : '#FFFFFF'}
-                                          fill={favorites.includes(meal.recipe.id) ? '#F97966' : 'none'}
-                                        />
-                                      </TouchableOpacity>
-                                      <View style={styles.recipeInfo}>
+                                      <View style={styles.recipeTextAndButtons}>
                                         <Text style={styles.recipeTitle}>
                                           {meal.recipe.title}
                                         </Text>
+                                        <View style={styles.recipeActionsContainer}>
+                                          <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={() => toggleFavorite(meal.recipe!.id)}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                          >
+                                            <Heart
+                                              size={16}
+                                              color={favorites.includes(meal.recipe.id) ? '#F97966' : '#6B7280'}
+                                              fill={favorites.includes(meal.recipe.id) ? '#F97966' : 'none'}
+                                            />
+                                            <Text style={[
+                                              styles.actionButtonText,
+                                              favorites.includes(meal.recipe.id) && styles.actionButtonTextActive
+                                            ]}>
+                                              Favorite
+                                            </Text>
+                                          </TouchableOpacity>
+                                          <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                          >
+                                            <Pencil size={16} color="#6B7280" />
+                                            <Text style={styles.actionButtonText}>Edit</Text>
+                                          </TouchableOpacity>
+                                        </View>
                                       </View>
-                                      <TouchableOpacity
-                                        style={styles.editButton}
-                                        onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                      >
-                                        <Pencil size={16} color="#9CA3AF" />
-                                      </TouchableOpacity>
                                     </View>
                                   )}
                                 </View>
@@ -511,55 +520,50 @@ const styles = StyleSheet.create({
   },
   mealCard: {
     marginBottom: 0,
+    padding: 0,
   },
   mealContent: {
-    // No additional styles needed
+    padding: 16,
   },
   recipePreview: {
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   recipeImage: {
-    width: '100%',
+    width: 80,
     height: 80,
     borderRadius: 12,
-    marginBottom: 12,
+    marginRight: 16,
   },
-  favoriteButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recipeInfo: {
-    paddingHorizontal: 4,
+  recipeTextAndButtons: {
+    flex: 1,
   },
   recipeTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 12,
+    lineHeight: 22,
   },
-  editButton: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  recipeActionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    gap: 6,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  actionButtonTextActive: {
+    color: '#F97966',
   },
 });
