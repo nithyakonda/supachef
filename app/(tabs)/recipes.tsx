@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, Save, CreditCard as Edit3, Trash2, ChevronRight } from 'lucide-react-native';
+import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
@@ -207,6 +208,10 @@ export default function RecipesScreen() {
     setShowAddModal(true);
   };
 
+  const handleRecipePress = (recipe: Recipe) => {
+    router.push(`/recipes/${recipe.id}`);
+  };
+
   const handleDeleteRecipe = async (recipeId: string) => {
     Alert.alert(
       'Delete Recipe',
@@ -332,7 +337,7 @@ export default function RecipesScreen() {
 
   const renderRecipeCard = (recipe: Recipe, isCarousel = false) => (
     <Card key={recipe.id} style={[styles.recipeCard, isCarousel && styles.carouselCard]}>
-      <TouchableOpacity onPress={() => handleEditRecipe(recipe)}>
+      <TouchableOpacity onPress={() => handleRecipePress(recipe)}>
         <View style={styles.recipeImageContainer}>
           <Image
             source={{ uri: recipe.imageUrl }}
@@ -340,7 +345,10 @@ export default function RecipesScreen() {
           />
           <TouchableOpacity
             style={styles.favoriteButton}
-            onPress={() => toggleFavorite(recipe.id)}
+            onPress={(e) => {
+              e.stopPropagation();
+              toggleFavorite(recipe.id);
+            }}
           >
             <Heart
               size={18}
@@ -351,13 +359,19 @@ export default function RecipesScreen() {
           <View style={styles.recipeActions}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleEditRecipe(recipe)}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleEditRecipe(recipe);
+              }}
             >
               <Edit3 size={16} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => handleDeleteRecipe(recipe.id)}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteRecipe(recipe.id);
+              }}
             >
               <Trash2 size={16} color="#FFFFFF" />
             </TouchableOpacity>
