@@ -155,6 +155,57 @@ export const sampleRecipes: Recipe[] = [
     tags: ['Breakfast', 'Healthy', 'Smoothie'],
     isFavorite: false,
     createdAt: new Date(),
+  },
+  {
+    id: '7',
+    title: 'Greek Yogurt Parfait',
+    description: 'Layered parfait with yogurt, berries, and granola',
+    imageUrl: 'https://images.pexels.com/photos/1092730/pexels-photo-1092730.jpeg',
+    cookingTime: 5,
+    servings: 1,
+    difficulty: 'Easy',
+    calories: 250,
+    ingredients: [
+      { name: 'Greek yogurt', amount: '1', unit: 'cup' },
+      { name: 'Mixed berries', amount: '1/2', unit: 'cup' },
+      { name: 'Granola', amount: '1/4', unit: 'cup' },
+      { name: 'Honey', amount: '1', unit: 'tablespoon' }
+    ],
+    instructions: [
+      'Layer yogurt in glass',
+      'Add berries and granola',
+      'Repeat layers',
+      'Drizzle with honey'
+    ],
+    tags: ['Breakfast', 'Healthy', 'Quick'],
+    isFavorite: false,
+    createdAt: new Date(),
+  },
+  {
+    id: '8',
+    title: 'Overnight Oats',
+    description: 'Make-ahead breakfast with oats and your favorite toppings',
+    imageUrl: 'https://images.pexels.com/photos/704569/pexels-photo-704569.jpeg',
+    cookingTime: 5,
+    servings: 1,
+    difficulty: 'Easy',
+    calories: 300,
+    ingredients: [
+      { name: 'Rolled oats', amount: '1/2', unit: 'cup' },
+      { name: 'Milk', amount: '1/2', unit: 'cup' },
+      { name: 'Chia seeds', amount: '1', unit: 'tablespoon' },
+      { name: 'Maple syrup', amount: '1', unit: 'tablespoon' },
+      { name: 'Vanilla extract', amount: '1/2', unit: 'teaspoon' }
+    ],
+    instructions: [
+      'Mix all ingredients in a jar',
+      'Refrigerate overnight',
+      'Add toppings in the morning',
+      'Enjoy cold or warm'
+    ],
+    tags: ['Breakfast', 'Make-ahead', 'Healthy'],
+    isFavorite: true,
+    createdAt: new Date(),
   }
 ];
 
@@ -172,7 +223,7 @@ export const getWeekDatesForPlan = (date: Date = new Date()) => {
   return week;
 };
 
-// Generate sample weekly meal plans
+// Generate sample weekly meal plans with multiple meals for testing carousel
 export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
   const weekDates = getWeekDatesForPlan();
   
@@ -184,9 +235,16 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
       case 0: // Sunday
         dayMeals.push(
           {
-            id: `${index}-breakfast`,
+            id: `${index}-breakfast-1`,
             type: 'breakfast',
             recipe: sampleRecipes[5], // Berry Smoothie Bowl
+            time: '9:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-breakfast-2`,
+            type: 'breakfast',
+            recipe: sampleRecipes[6], // Greek Yogurt Parfait
             time: '9:00 AM',
             isCompleted: false,
           },
@@ -209,9 +267,23 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
       case 1: // Monday
         dayMeals.push(
           {
-            id: `${index}-breakfast`,
+            id: `${index}-breakfast-1`,
             type: 'breakfast',
             recipe: sampleRecipes[2], // Avocado Toast
+            time: '8:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-breakfast-2`,
+            type: 'breakfast',
+            recipe: sampleRecipes[7], // Overnight Oats
+            time: '8:00 AM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-breakfast-3`,
+            type: 'breakfast',
+            recipe: sampleRecipes[6], // Greek Yogurt Parfait
             time: '8:00 AM',
             isCompleted: false,
           },
@@ -241,9 +313,16 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
             isCompleted: false,
           },
           {
-            id: `${index}-lunch`,
+            id: `${index}-lunch-1`,
             type: 'lunch',
             recipe: sampleRecipes[1], // Mediterranean Quinoa Bowl
+            time: '12:30 PM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-lunch-2`,
+            type: 'lunch',
+            recipe: sampleRecipes[3], // Grilled Chicken Caesar
             time: '12:30 PM',
             isCompleted: false,
           }
@@ -284,9 +363,16 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
             isCompleted: false,
           },
           {
-            id: `${index}-dinner`,
+            id: `${index}-dinner-1`,
             type: 'dinner',
             recipe: sampleRecipes[0], // Butternut Soup
+            time: '7:00 PM',
+            isCompleted: false,
+          },
+          {
+            id: `${index}-dinner-2`,
+            type: 'dinner',
+            recipe: sampleRecipes[4], // Spaghetti Carbonara
             time: '7:00 PM',
             isCompleted: false,
           }

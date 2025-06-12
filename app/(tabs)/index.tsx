@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Pencil, Plus, User } from 'lucide-react-native';
+import { Pencil, Plus, User } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EditMealModal from '../../components/ui/EditMealModal';
@@ -56,28 +56,6 @@ export default function HomeScreen() {
       x: dayIndex * width,
       animated: true,
     });
-  };
-
-  const handlePrevDay = () => {
-    if (selectedDayIndex > 0) {
-      const newIndex = selectedDayIndex - 1;
-      setSelectedDayIndex(newIndex);
-      scrollViewRef.current?.scrollTo({
-        x: newIndex * width,
-        animated: true,
-      });
-    }
-  };
-
-  const handleNextDay = () => {
-    if (selectedDayIndex < 6) {
-      const newIndex = selectedDayIndex + 1;
-      setSelectedDayIndex(newIndex);
-      scrollViewRef.current?.scrollTo({
-        x: newIndex * width,
-        animated: true,
-      });
-    }
   };
 
   const handleScrollEnd = (event: any) => {
@@ -133,8 +111,6 @@ export default function HomeScreen() {
   };
 
   const selectedPlan = weeklyMealPlans[selectedDayIndex];
-  const selectedDate = selectedPlan.date;
-  const isViewingToday = selectedDayIndex === todayIndex;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -190,38 +166,6 @@ export default function HomeScreen() {
 
         {/* Daily Meals Section */}
         <View style={styles.dailyMealsSection}>
-          <View style={styles.dailyMealsHeader}>
-            <TouchableOpacity
-              style={[styles.navArrow, selectedDayIndex === 0 && styles.disabledArrow]}
-              onPress={handlePrevDay}
-              disabled={selectedDayIndex === 0}
-            >
-              <ChevronLeft size={20} color={selectedDayIndex === 0 ? '#E5E7EB' : '#6B7280'} />
-            </TouchableOpacity>
-            
-            <View style={styles.dailyMealsTitle}>
-              {isViewingToday ? (
-                <Text style={styles.todayTitle}>Today</Text>
-              ) : (
-                <Text style={styles.dailyMealsDate}>
-                  {selectedDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </Text>
-              )}
-            </View>
-            
-            <TouchableOpacity
-              style={[styles.navArrow, selectedDayIndex === 6 && styles.disabledArrow]}
-              onPress={handleNextDay}
-              disabled={selectedDayIndex === 6}
-            >
-              <ChevronRight size={20} color={selectedDayIndex === 6 ? '#E5E7EB' : '#6B7280'} />
-            </TouchableOpacity>
-          </View>
-
           <ScrollView
             ref={scrollViewRef}
             horizontal
@@ -244,37 +188,41 @@ export default function HomeScreen() {
                           {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
                         </Text>
                         
-                        {mealsOfType.map((meal, mealIndex) => {
-                          const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
-                          
-                          return (
-                            <Card key={meal.id} style={styles.mealCard}>
-                              <View style={styles.mealContent}>
-                                {meal.recipe && (
-                                  <View style={styles.recipePreview}>
-                                    <Image
-                                      source={{ uri: meal.recipe.imageUrl }}
-                                      style={styles.recipeImage}
-                                    />
-                                    <View style={styles.recipeInfo}>
-                                      <Text style={styles.recipeTitle}>{meal.recipe.title}</Text>
-                                      <Text style={styles.recipeDetails}>
-                                        {meal.recipe.cookingTime} min • {meal.recipe.calories} cal
-                                      </Text>
+                        {/* Stack all meal cards vertically */}
+                        <View style={styles.mealCardsContainer}>
+                          {mealsOfType.map((meal) => {
+                            const originalMealIndex = plan.meals.findIndex(m => m.id === meal.id);
+                            
+                            return (
+                              <Card key={meal.id} style={styles.mealCard}>
+                                <View style={styles.mealContent}>
+                                  {meal.recipe && (
+                                    <View style={styles.recipePreview}>
+                                      <Image
+                                        source={{ uri: meal.recipe.imageUrl }}
+                                        style={styles.recipeImage}
+                                      />
+                                      <View style={styles.recipeTextAndButtons}>
+                                        <View style={styles.titleAndEditContainer}>
+                                          <Text style={styles.recipeTitle}>
+                                            {meal.recipe.title}
+                                          </Text>
+                                          <TouchableOpacity
+                                            style={styles.editTitleButton}
+                                            onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                          >
+                                            <Pencil size={16} color="#6B7280" />
+                                          </TouchableOpacity>
+                                        </View>
+                                      </View>
                                     </View>
-                                    <TouchableOpacity
-                                      style={styles.editButton}
-                                      onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
-                                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                    >
-                                      <Pencil size={16} color="#9CA3AF" />
-                                    </TouchableOpacity>
-                                  </View>
-                                )}
-                              </View>
-                            </Card>
-                          );
-                        })}
+                                  )}
+                                </View>
+                              </Card>
+                            );
+                          })}
+                        </View>
                       </View>
                     );
                   })
@@ -392,38 +340,6 @@ const styles = StyleSheet.create({
   dailyMealsSection: {
     marginBottom: 32,
   },
-  dailyMealsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  navArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabledArrow: {
-    backgroundColor: '#F9FAFB',
-  },
-  dailyMealsTitle: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  dailyMealsDate: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  todayTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#F97966',
-  },
   mealsScrollView: {
     flex: 1,
   },
@@ -440,6 +356,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 4,
   },
+  mealCardsContainer: {
+    gap: 12,
+  },
   noMealsContainer: {
     alignItems: 'center',
     paddingVertical: 48,
@@ -455,60 +374,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   mealCard: {
-    marginBottom: 12,
+    marginBottom: 0,
+    padding: 0,
   },
   mealContent: {
-    // No additional styles needed
-  },
-  mealHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  mealInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  editButton: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    padding: 16,
   },
   recipePreview: {
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   recipeImage: {
-    width: '100%',
-    height: 120,
+    width: 80,
+    height: 80,
     borderRadius: 12,
-    marginBottom: 12,
+    marginRight: 16,
   },
-  recipeInfo: {
-    paddingHorizontal: 4,
+  recipeTextAndButtons: {
+    flex: 1,
+  },
+  titleAndEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    minHeight: 22, // Match the lineHeight of the text
   },
   recipeTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 4,
+    lineHeight: 22,
+    flex: 1,
+    marginRight: 8,
   },
-  recipeDetails: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+  editTitleButton: {
+    width: 24,
+    height: 22, // Match the lineHeight for perfect alignment
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
 });
