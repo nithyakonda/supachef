@@ -10,17 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  ChevronLeft, 
-  Heart, 
-  Edit3, 
-  Trash2, 
-  Clock, 
-  Users, 
-  Star,
-  ChefHat,
-  Flame
-} from 'lucide-react-native';
+import { ChevronLeft, Heart, CreditCard as Edit3, Trash2, Clock, Users, Star, ChefHat, Flame } from 'lucide-react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
