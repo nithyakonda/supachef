@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Pencil, Plus, User } from 'lucide-react-native';
+import { Pencil, Plus, Home } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EditMealModal from '../../components/ui/EditMealModal';
@@ -118,7 +118,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.profileButton}>
-            <User size={24} color="#F97966" />
+            <Home size={24} color="#F97966" />
           </TouchableOpacity>
           <View style={styles.greetingContainer}>
             <Text style={styles.greeting}>Hello, Chef!</Text>
