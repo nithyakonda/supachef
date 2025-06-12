@@ -60,7 +60,7 @@ export default function RecipeDetailScreen() {
 
   const handleEdit = () => {
     if (recipe) {
-      router.push(`/recipes/add-edit-recipe?recipeId=${recipe.id}`);
+      router.push(`/recipe/add-edit-recipe?recipeId=${recipe.id}`);
     }
   };
 
