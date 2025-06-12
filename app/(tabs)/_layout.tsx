@@ -34,7 +34,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="recipes"
         options={{
-          title: 'Recipes',
+          title: 'My Recipe Book',
           tabBarIcon: ({ size, color }) => (
             <Notebook size={size} color={color} strokeWidth={2} />
           ),
