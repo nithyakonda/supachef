@@ -13,7 +13,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, Save, CreditCard as Edit3, Trash2, ChevronRight } from 'lucide-react-native';
+import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, Save, Edit3, Trash2, ChevronRight } from 'lucide-react-native';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
@@ -332,78 +332,70 @@ export default function RecipesScreen() {
 
   const renderRecipeCard = (recipe: Recipe, isCarousel = false) => (
     <Card key={recipe.id} style={[styles.recipeCard, isCarousel && styles.carouselCard]}>
-      <TouchableOpacity onPress={() => handleEditRecipe(recipe)}>
-        <View style={styles.recipeImageContainer}>
-          <Image
-            source={{ uri: recipe.imageUrl }}
-            style={styles.recipeImage}
-          />
+      <View style={styles.recipeImageContainer}>
+        <Image
+          source={{ uri: recipe.imageUrl }}
+          style={styles.recipeImage}
+        />
+        <View style={styles.recipeActions}>
           <TouchableOpacity
-            style={styles.favoriteButton}
-            onPress={() => toggleFavorite(recipe.id)}
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => handleDeleteRecipe(recipe.id)}
           >
-            <Heart
-              size={18}
-              color={favorites.includes(recipe.id) ? '#F97966' : '#9CA3AF'}
-              fill={favorites.includes(recipe.id) ? '#F97966' : 'none'}
-            />
+            <Trash2 size={16} color="#FFFFFF" />
           </TouchableOpacity>
-          <View style={styles.recipeActions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleEditRecipe(recipe)}
-            >
-              <Edit3 size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => handleDeleteRecipe(recipe.id)}
-            >
-              <Trash2 size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
         </View>
+      </View>
 
-        <View style={styles.recipeContent}>
+      <View style={styles.recipeContent}>
+        <View style={styles.titleAndEditContainer}>
           <Text style={styles.recipeTitle} numberOfLines={2}>{recipe.title}</Text>
-          <Text style={styles.recipeDescription} numberOfLines={2}>
-            {recipe.description}
-          </Text>
+          <TouchableOpacity
+            style={styles.editTitleButton}
+            onPress={() => handleEditRecipe(recipe)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Edit3 size={16} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={styles.recipeDescription} numberOfLines={2}>
+          {recipe.description}
+        </Text>
 
-          {recipe.rating && recipe.rating > 0 && (
-            <View style={styles.ratingContainer}>
-              {renderStarRating(recipe.rating)}
-              <Text style={styles.ratingText}>({recipe.rating})</Text>
-            </View>
-          )}
-
-          <View style={styles.recipeStats}>
-            <View style={styles.statItem}>
-              <Clock size={14} color="#6B7280" />
-              <Text style={styles.statText}>{recipe.cookingTime} min</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Users size={14} color="#6B7280" />
-              <Text style={styles.statText}>{recipe.servings} servings</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={[
-                styles.difficultyDot,
-                { backgroundColor: getDifficultyColor(recipe.difficulty) }
-              ]} />
-              <Text style={styles.statText}>{recipe.difficulty}</Text>
-            </View>
+        {recipe.rating && recipe.rating > 0 && (
+          <View style={styles.ratingContainer}>
+            {renderStarRating(recipe.rating)}
+            <Text style={styles.ratingText}>({recipe.rating})</Text>
           </View>
+        )}
 
-          <View style={styles.recipeTags}>
-            {recipe.tags.slice(0, 2).map(tag => (
-              <View key={tag} style={styles.recipeTag}>
-                <Text style={styles.recipeTagText}>{tag}</Text>
-              </View>
-            ))}
+        <View style={styles.recipeStats}>
+          <View style={styles.statItem}>
+            <Clock size={14} color="#6B7280" />
+            <Text style={styles.statText}>{recipe.cookingTime} min</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Users size={14} color="#6B7280" />
+            <Text style={styles.statText}>{recipe.servings} servings</Text>
+          </View>
+          <View style={styles.statItem}>
+            <View style={[
+              styles.difficultyDot,
+              { backgroundColor: getDifficultyColor(recipe.difficulty) }
+            ]} />
+            <Text style={styles.statText}>{recipe.difficulty}</Text>
           </View>
         </View>
-      </TouchableOpacity>
+
+        <View style={styles.recipeTags}>
+          {recipe.tags.slice(0, 2).map(tag => (
+            <View key={tag} style={styles.recipeTag}>
+              <Text style={styles.recipeTagText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
     </Card>
   );
 
@@ -970,17 +962,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
-  favoriteButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   recipeActions: {
     position: 'absolute',
     bottom: 8,
@@ -1002,11 +983,22 @@ const styles = StyleSheet.create({
   recipeContent: {
     padding: 12,
   },
+  titleAndEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   recipeTitle: {
     fontSize: 14,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
+  },
+  editTitleButton: {
+    padding: 4,
+    backgroundColor: 'transparent',
   },
   recipeDescription: {
     fontSize: 12,
