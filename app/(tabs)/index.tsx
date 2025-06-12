@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   },
   titleAndEditContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   recipeTitle: {
@@ -497,5 +497,6 @@ const styles = StyleSheet.create({
   editTitleButton: {
     padding: 4,
     backgroundColor: 'transparent',
+    alignSelf: 'flex-start',
   },
 });
