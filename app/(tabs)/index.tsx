@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Pencil, Plus, User } from 'lucide-react-native';
+import { Pencil, Plus, User } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EditMealModal from '../../components/ui/EditMealModal';
@@ -56,28 +56,6 @@ export default function HomeScreen() {
       x: dayIndex * width,
       animated: true,
     });
-  };
-
-  const handlePrevDay = () => {
-    if (selectedDayIndex > 0) {
-      const newIndex = selectedDayIndex - 1;
-      setSelectedDayIndex(newIndex);
-      scrollViewRef.current?.scrollTo({
-        x: newIndex * width,
-        animated: true,
-      });
-    }
-  };
-
-  const handleNextDay = () => {
-    if (selectedDayIndex < 6) {
-      const newIndex = selectedDayIndex + 1;
-      setSelectedDayIndex(newIndex);
-      scrollViewRef.current?.scrollTo({
-        x: newIndex * width,
-        animated: true,
-      });
-    }
   };
 
   const handleScrollEnd = (event: any) => {
@@ -133,8 +111,6 @@ export default function HomeScreen() {
   };
 
   const selectedPlan = weeklyMealPlans[selectedDayIndex];
-  const selectedDate = selectedPlan.date;
-  const isViewingToday = selectedDayIndex === todayIndex;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -190,38 +166,6 @@ export default function HomeScreen() {
 
         {/* Daily Meals Section */}
         <View style={styles.dailyMealsSection}>
-          <View style={styles.dailyMealsHeader}>
-            <TouchableOpacity
-              style={[styles.navArrow, selectedDayIndex === 0 && styles.disabledArrow]}
-              onPress={handlePrevDay}
-              disabled={selectedDayIndex === 0}
-            >
-              <ChevronLeft size={20} color={selectedDayIndex === 0 ? '#E5E7EB' : '#6B7280'} />
-            </TouchableOpacity>
-            
-            <View style={styles.dailyMealsTitle}>
-              {isViewingToday ? (
-                <Text style={styles.todayTitle}>Today</Text>
-              ) : (
-                <Text style={styles.dailyMealsDate}>
-                  {selectedDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </Text>
-              )}
-            </View>
-            
-            <TouchableOpacity
-              style={[styles.navArrow, selectedDayIndex === 6 && styles.disabledArrow]}
-              onPress={handleNextDay}
-              disabled={selectedDayIndex === 6}
-            >
-              <ChevronRight size={20} color={selectedDayIndex === 6 ? '#E5E7EB' : '#6B7280'} />
-            </TouchableOpacity>
-          </View>
-
           <ScrollView
             ref={scrollViewRef}
             horizontal
@@ -395,38 +339,6 @@ const styles = StyleSheet.create({
   },
   dailyMealsSection: {
     marginBottom: 32,
-  },
-  dailyMealsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  navArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabledArrow: {
-    backgroundColor: '#F9FAFB',
-  },
-  dailyMealsTitle: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  dailyMealsDate: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  todayTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#F97966',
   },
   mealsScrollView: {
     flex: 1,
