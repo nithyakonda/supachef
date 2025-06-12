@@ -36,7 +36,7 @@ export default function TabLayout() {
         options={{
           title: 'Recipes',
           tabBarIcon: ({ size, color }) => (
-            <Book size={size} color={color} strokeWidth={2} />
+            <Notebook size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
