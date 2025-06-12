@@ -9,13 +9,12 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Pencil, Plus, User, Heart } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Pencil, Plus, User } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EditMealModal from '../../components/ui/EditMealModal';
 import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
 import { Meal, MealPlan } from '../../types';
-import { recipeService } from '../../services/recipeService';
 
 const { width } = Dimensions.get('window');
 
@@ -32,19 +31,12 @@ export default function HomeScreen() {
     dayIndex: number;
     mealIndex: number;
   } | null>(null);
-  const [favorites, setFavorites] = useState<string[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const allMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
   const today = new Date();
   const todayIndex = today.getDay();
-
-  // Load favorite recipes on component mount
-  useEffect(() => {
-    const favoriteRecipes = recipeService.getFavoriteRecipes();
-    setFavorites(favoriteRecipes.map(recipe => recipe.id));
-  }, []);
 
   // Initial scroll to today's meals
   useEffect(() => {
@@ -97,37 +89,6 @@ export default function HomeScreen() {
   const handleEditMeal = (meal: Meal, dayIndex: number, mealIndex: number) => {
     setCurrentMealEditInfo({ meal, dayIndex, mealIndex });
     setShowEditMealModal(true);
-  };
-
-  const toggleFavorite = async (recipeId: string) => {
-    try {
-      // Toggle favorite in recipe service
-      const updatedRecipe = recipeService.toggleFavorite(recipeId);
-      
-      if (updatedRecipe) {
-        // Update local favorites state
-        setFavorites(prev => 
-          updatedRecipe.isFavorite 
-            ? [...prev, recipeId]
-            : prev.filter(id => id !== recipeId)
-        );
-      } else {
-        // Recipe not found in recipe book, add it first
-        const mealRecipe = weeklyMealPlans
-          .flatMap(plan => plan.meals)
-          .find(meal => meal.recipe?.id === recipeId)?.recipe;
-        
-        if (mealRecipe) {
-          const savedRecipe = recipeService.saveRecipe({
-            ...mealRecipe,
-            isFavorite: true
-          });
-          setFavorites(prev => [...prev, savedRecipe.id]);
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-    }
   };
 
   const handleSaveEditedMeal = (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => {
@@ -298,34 +259,16 @@ export default function HomeScreen() {
                                         style={styles.recipeImage}
                                       />
                                       <View style={styles.recipeTextAndButtons}>
-                                        <Text style={styles.recipeTitle}>
-                                          {meal.recipe.title}
-                                        </Text>
-                                        <View style={styles.recipeActionsContainer}>
+                                        <View style={styles.titleAndEditContainer}>
+                                          <Text style={styles.recipeTitle}>
+                                            {meal.recipe.title}
+                                          </Text>
                                           <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={() => toggleFavorite(meal.recipe!.id)}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                          >
-                                            <Heart
-                                              size={16}
-                                              color={favorites.includes(meal.recipe.id) ? '#F97966' : '#6B7280'}
-                                              fill={favorites.includes(meal.recipe.id) ? '#F97966' : 'none'}
-                                            />
-                                            <Text style={[
-                                              styles.actionButtonText,
-                                              favorites.includes(meal.recipe.id) && styles.actionButtonTextActive
-                                            ]}>
-                                              Favorite
-                                            </Text>
-                                          </TouchableOpacity>
-                                          <TouchableOpacity
-                                            style={styles.actionButton}
+                                            style={styles.editTitleButton}
                                             onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
                                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                           >
                                             <Pencil size={16} color="#6B7280" />
-                                            <Text style={styles.actionButtonText}>Edit</Text>
                                           </TouchableOpacity>
                                         </View>
                                       </View>
@@ -538,32 +481,21 @@ const styles = StyleSheet.create({
   recipeTextAndButtons: {
     flex: 1,
   },
+  titleAndEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
   recipeTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 12,
     lineHeight: 22,
+    flex: 1,
+    marginRight: 8,
   },
-  recipeActionsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    gap: 6,
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-  },
-  actionButtonTextActive: {
-    color: '#F97966',
+  editTitleButton: {
+    padding: 4,
+    backgroundColor: 'transparent',
   },
 });
