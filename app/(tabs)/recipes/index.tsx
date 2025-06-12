@@ -133,15 +133,15 @@ export default function RecipesScreen() {
   };
 
   const handleAddRecipe = () => {
-    router.push('/recipe/add-edit-recipe');
+    router.push('/recipes/add-edit-recipe');
   };
 
   const handleEditRecipe = (recipe: Recipe) => {
-    router.push(`/recipe/add-edit-recipe?recipeId=${recipe.id}`);
+    router.push(`/recipes/add-edit-recipe?recipeId=${recipe.id}`);
   };
 
   const handleRecipePress = (recipe: Recipe) => {
-    router.push(`/recipe/${recipe.id}`);
+    router.push(`/recipes/${recipe.id}`);
   };
 
   const handleDeleteRecipe = async (recipeId: string) => {
