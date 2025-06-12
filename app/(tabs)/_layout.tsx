@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, Notebook, Calendar, Settings } from 'lucide-react-native';
+import { Home, Notebook, Calendar, Settings } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -34,7 +34,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="recipes"
         options={{
-          title: 'My Recipe Book',
+          title: 'Recipe Book',
           tabBarIcon: ({ size, color }) => (
             <Notebook size={size} color={color} strokeWidth={2} />
           ),
