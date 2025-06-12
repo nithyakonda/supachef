@@ -13,8 +13,8 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, Save, CreditCard as Edit3, Trash2, ChevronRight } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, ChevronRight } from 'lucide-react-native';
+import { router, useFocusEffect } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
@@ -25,57 +25,19 @@ import { recipeService } from '@/services/recipeService';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2; // 2 cards per row with margins
 
-interface RecipeFormData {
-  title: string;
-  description: string;
-  imageUrl: string;
-  cookingTime: number;
-  servings: number;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  calories: number;
-  ingredients: string;
-  instructions: string;
-  tags: string[];
-  rating: number;
-  notes: string;
-  isFavorite: boolean;
-}
-
 export default function RecipesScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>(sampleRecipes);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>(['1', '3']);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'alphabetical' | 'rating'>('recent');
   const [filterBy, setFilterBy] = useState<'all' | 'favorites'>('all');
   const [importUrl, setImportUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
-  const [formData, setFormData] = useState<RecipeFormData>({
-    title: '',
-    description: '',
-    imageUrl: '',
-    cookingTime: 30,
-    servings: 4,
-    difficulty: 'Easy',
-    calories: 0,
-    ingredients: '',
-    instructions: '',
-    tags: [],
-    rating: 0,
-    notes: '',
-    isFavorite: false,
-  });
-
-  // Load recipes from database on component mount
-  useEffect(() => {
-    loadRecipes();
-  }, []);
-
+  // Load recipes from database on component mount and when screen comes into focus
   const loadRecipes = async () => {
     try {
       const savedRecipes = await recipeService.getAllRecipes();
@@ -86,6 +48,12 @@ export default function RecipesScreen() {
       console.error('Error loading recipes:', error);
     }
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadRecipes();
+    }, [])
+  );
 
   const allTags = Array.from(
     new Set(recipes.flatMap(recipe => recipe.tags))
@@ -164,48 +132,12 @@ export default function RecipesScreen() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      imageUrl: '',
-      cookingTime: 30,
-      servings: 4,
-      difficulty: 'Easy',
-      calories: 0,
-      ingredients: '',
-      instructions: '',
-      tags: [],
-      rating: 0,
-      notes: '',
-      isFavorite: false,
-    });
-    setEditingRecipe(null);
-  };
-
   const handleAddRecipe = () => {
-    resetForm();
-    setShowAddModal(true);
+    router.push('/recipe/add-edit-recipe');
   };
 
   const handleEditRecipe = (recipe: Recipe) => {
-    setFormData({
-      title: recipe.title,
-      description: recipe.description,
-      imageUrl: recipe.imageUrl,
-      cookingTime: recipe.cookingTime,
-      servings: recipe.servings,
-      difficulty: recipe.difficulty,
-      calories: recipe.calories,
-      ingredients: recipe.ingredients.map(ing => `${ing.amount} ${ing.unit || ''} ${ing.name}`).join('\n'),
-      instructions: recipe.instructions.join('\n'),
-      tags: recipe.tags,
-      rating: recipe.rating || 0,
-      notes: recipe.notes || '',
-      isFavorite: recipe.isFavorite,
-    });
-    setEditingRecipe(recipe);
-    setShowAddModal(true);
+    router.push(`/recipe/add-edit-recipe?recipeId=${recipe.id}`);
   };
 
   const handleRecipePress = (recipe: Recipe) => {
@@ -235,65 +167,6 @@ export default function RecipesScreen() {
     );
   };
 
-  const handleSaveRecipe = async () => {
-    if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter a recipe title');
-      return;
-    }
-
-    try {
-      const ingredientsArray = formData.ingredients
-        .split('\n')
-        .filter(line => line.trim())
-        .map(line => {
-          const parts = line.trim().split(' ');
-          const amount = parts[0];
-          const unit = parts[1];
-          const name = parts.slice(2).join(' ');
-          return { name: name || line.trim(), amount, unit };
-        });
-
-      const instructionsArray = formData.instructions
-        .split('\n')
-        .filter(line => line.trim());
-
-      const recipeData: Recipe = {
-        id: editingRecipe?.id || `recipe-${Date.now()}`,
-        title: formData.title,
-        description: formData.description,
-        imageUrl: formData.imageUrl || 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
-        cookingTime: formData.cookingTime,
-        servings: formData.servings,
-        difficulty: formData.difficulty,
-        calories: formData.calories,
-        ingredients: ingredientsArray,
-        instructions: instructionsArray,
-        tags: formData.tags,
-        rating: formData.rating,
-        notes: formData.notes,
-        isFavorite: formData.isFavorite,
-        createdAt: editingRecipe?.createdAt || new Date(),
-      };
-
-      if (editingRecipe) {
-        await recipeService.updateRecipe(recipeData);
-        setRecipes(prev => prev.map(r => r.id === recipeData.id ? recipeData : r));
-      } else {
-        await recipeService.saveRecipe(recipeData);
-        setRecipes(prev => [recipeData, ...prev]);
-      }
-
-      if (formData.isFavorite && !favorites.includes(recipeData.id)) {
-        setFavorites(prev => [...prev, recipeData.id]);
-      }
-
-      setShowAddModal(false);
-      resetForm();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save recipe');
-    }
-  };
-
   const handleImportFromUrl = async () => {
     if (!importUrl.trim()) {
       Alert.alert('Error', 'Please enter a valid URL');
@@ -315,94 +188,84 @@ export default function RecipesScreen() {
     }
   };
 
-  const renderStarRating = (rating: number, onPress?: (rating: number) => void) => {
+  const renderStarRating = (rating: number) => {
     return (
       <View style={styles.starContainer}>
         {[1, 2, 3, 4, 5].map((star) => (
-          <TouchableOpacity
+          <Star
             key={star}
-            onPress={() => onPress?.(star)}
-            disabled={!onPress}
-          >
-            <Star
-              size={20}
-              color={star <= rating ? '#F59E0B' : '#E5E7EB'}
-              fill={star <= rating ? '#F59E0B' : 'none'}
-            />
-          </TouchableOpacity>
+            size={16}
+            color={star <= rating ? '#F59E0B' : '#E5E7EB'}
+            fill={star <= rating ? '#F59E0B' : 'none'}
+          />
         ))}
       </View>
     );
   };
 
-   const renderRecipeCard = (recipe: Recipe, isCarousel = false) => (
+  const renderRecipeCard = (recipe: Recipe, isCarousel = false) => (
     <Card key={recipe.id} style={[styles.recipeCard, isCarousel && styles.carouselCard]}>
-      <View style={styles.recipeImageContainer}>
-        <Image
-          source={{ uri: recipe.imageUrl }}
-          style={styles.recipeImage}
-        />
-        <View style={styles.recipeActions}>
+      <TouchableOpacity onPress={() => handleRecipePress(recipe)}>
+        <View style={styles.recipeImageContainer}>
+          <Image
+            source={{ uri: recipe.imageUrl }}
+            style={styles.recipeImage}
+          />
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => handleDeleteRecipe(recipe.id)}
+            style={styles.favoriteButton}
+            onPress={() => toggleFavorite(recipe.id)}
           >
-            <Trash2 size={16} color="#FFFFFF" />
+            <Heart
+              size={18}
+              color={favorites.includes(recipe.id) ? '#F97966' : '#9CA3AF'}
+              fill={favorites.includes(recipe.id) ? '#F97966' : 'none'}
+            />
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.recipeContent}>
-        <View style={styles.titleAndEditContainer}>
+        <View style={styles.recipeContent}>
           <Text style={styles.recipeTitle} numberOfLines={2}>{recipe.title}</Text>
-          <TouchableOpacity
-            style={styles.editTitleButton}
-            onPress={() => handleEditRecipe(recipe)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Edit3 size={16} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-        
-        <Text style={styles.recipeDescription} numberOfLines={2}>
-          {recipe.description}
-        </Text>
+          <Text style={styles.recipeDescription} numberOfLines={2}>
+            {recipe.description}
+          </Text>
 
-        {recipe.rating && recipe.rating > 0 && (
-          <View style={styles.ratingContainer}>
-            {renderStarRating(recipe.rating)}
-            <Text style={styles.ratingText}>({recipe.rating})</Text>
-          </View>
-        )}
-
-        <View style={styles.recipeStats}>
-          <View style={styles.statItem}>
-            <Clock size={14} color="#6B7280" />
-            <Text style={styles.statText}>{recipe.cookingTime} min</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Users size={14} color="#6B7280" />
-            <Text style={styles.statText}>{recipe.servings} servings</Text>
-          </View>
-          <View style={styles.statItem}>
-            <View style={[
-              styles.difficultyDot,
-              { backgroundColor: getDifficultyColor(recipe.difficulty) }
-            ]} />
-            <Text style={styles.statText}>{recipe.difficulty}</Text>
-          </View>
-        </View>
-
-        <View style={styles.recipeTags}>
-          {recipe.tags.slice(0, 2).map(tag => (
-            <View key={tag} style={styles.recipeTag}>
-              <Text style={styles.recipeTagText}>{tag}</Text>
+          {recipe.rating && recipe.rating > 0 && (
+            <View style={styles.ratingContainer}>
+              {renderStarRating(recipe.rating)}
+              <Text style={styles.ratingText}>({recipe.rating})</Text>
             </View>
-          ))}
+          )}
+
+          <View style={styles.recipeStats}>
+            <View style={styles.statItem}>
+              <Clock size={14} color="#6B7280" />
+              <Text style={styles.statText}>{recipe.cookingTime} min</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Users size={14} color="#6B7280" />
+              <Text style={styles.statText}>{recipe.servings} servings</Text>
+            </View>
+            <View style={styles.statItem}>
+              <View style={[
+                styles.difficultyDot,
+                { backgroundColor: getDifficultyColor(recipe.difficulty) }
+              ]} />
+              <Text style={styles.statText}>{recipe.difficulty}</Text>
+            </View>
+          </View>
+
+          <View style={styles.recipeTags}>
+            {recipe.tags.slice(0, 2).map(tag => (
+              <View key={tag} style={styles.recipeTag}>
+                <Text style={styles.recipeTagText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     </Card>
   );
+
   const renderCarousel = (title: string, recipes: Recipe[]) => {
     if (recipes.length === 0) return null;
 
@@ -522,183 +385,6 @@ export default function RecipesScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* Add/Edit Recipe Modal */}
-      <Modal
-        visible={showAddModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAddModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingRecipe ? 'Edit Recipe' : 'Add New Recipe'}
-              </Text>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <X size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.formScrollView}>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Title *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={formData.title}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, title: text }))}
-                  placeholder="Recipe title"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Description</Text>
-                <TextInput
-                  style={[styles.formInput, styles.textArea]}
-                  value={formData.description}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-                  placeholder="Brief description"
-                  multiline
-                  numberOfLines={3}
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Image URL</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={formData.imageUrl}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, imageUrl: text }))}
-                  placeholder="https://example.com/image.jpg"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.formRow}>
-                <View style={styles.formGroupHalf}>
-                  <Text style={styles.formLabel}>Cooking Time (min)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formData.cookingTime.toString()}
-                    onChangeText={(text) => setFormData(prev => ({ ...prev, cookingTime: parseInt(text) || 0 }))}
-                    keyboardType="numeric"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                <View style={styles.formGroupHalf}>
-                  <Text style={styles.formLabel}>Servings</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formData.servings.toString()}
-                    onChangeText={(text) => setFormData(prev => ({ ...prev, servings: parseInt(text) || 0 }))}
-                    keyboardType="numeric"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Difficulty</Text>
-                <View style={styles.difficultyButtons}>
-                  {['Easy', 'Medium', 'Hard'].map((difficulty) => (
-                    <TouchableOpacity
-                      key={difficulty}
-                      style={[
-                        styles.difficultyButton,
-                        formData.difficulty === difficulty && styles.selectedDifficulty
-                      ]}
-                      onPress={() => setFormData(prev => ({ ...prev, difficulty: difficulty as any }))}
-                    >
-                      <Text style={[
-                        styles.difficultyButtonText,
-                        formData.difficulty === difficulty && styles.selectedDifficultyText
-                      ]}>
-                        {difficulty}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Rating</Text>
-                {renderStarRating(formData.rating, (rating) => 
-                  setFormData(prev => ({ ...prev, rating }))
-                )}
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Ingredients (one per line)</Text>
-                <TextInput
-                  style={[styles.formInput, styles.textArea]}
-                  value={formData.ingredients}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, ingredients: text }))}
-                  placeholder="2 cups flour&#10;1 tsp salt&#10;3 eggs"
-                  multiline
-                  numberOfLines={5}
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Instructions (one per line)</Text>
-                <TextInput
-                  style={[styles.formInput, styles.textArea]}
-                  value={formData.instructions}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, instructions: text }))}
-                  placeholder="Preheat oven to 350°F&#10;Mix dry ingredients&#10;Add wet ingredients"
-                  multiline
-                  numberOfLines={5}
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Notes</Text>
-                <TextInput
-                  style={[styles.formInput, styles.textArea]}
-                  value={formData.notes}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, notes: text }))}
-                  placeholder="Additional notes or tips"
-                  multiline
-                  numberOfLines={3}
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.favoriteToggle}
-                onPress={() => setFormData(prev => ({ ...prev, isFavorite: !prev.isFavorite }))}
-              >
-                <Heart
-                  size={20}
-                  color={formData.isFavorite ? '#F97966' : '#9CA3AF'}
-                  fill={formData.isFavorite ? '#F97966' : 'none'}
-                />
-                <Text style={styles.favoriteToggleText}>Mark as favorite</Text>
-              </TouchableOpacity>
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setShowAddModal(false)}
-                variant="outline"
-                style={styles.modalButton}
-              />
-              <Button
-                title={editingRecipe ? 'Update' : 'Save'}
-                onPress={handleSaveRecipe}
-                variant="primary"
-                style={styles.modalButton}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Import from URL Modal */}
       <Modal
@@ -966,43 +652,25 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
-  recipeActions: {
+  favoriteButton: {
     position: 'absolute',
-    bottom: 8,
+    top: 8,
     right: 8,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.8)',
-  },
   recipeContent: {
     padding: 12,
-  },
-  titleAndEditContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 4,
   },
   recipeTitle: {
     fontSize: 14,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-    flex: 1,
-    marginRight: 8,
-  },
-  editTitleButton: {
-    padding: 4,
-    backgroundColor: 'transparent',
+    marginBottom: 4,
   },
   recipeDescription: {
     fontSize: 12,
@@ -1068,13 +736,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '90%',
-  },
   importModalContent: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
@@ -1099,90 +760,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-  },
-  formScrollView: {
-    maxHeight: 400,
-    marginBottom: 20,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  formGroupHalf: {
-    flex: 1,
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  formLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  formInput: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  difficultyButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  difficultyButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-  },
-  selectedDifficulty: {
-    borderColor: '#F97966',
-    backgroundColor: '#FEF3F2',
-  },
-  difficultyButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-  },
-  selectedDifficultyText: {
-    color: '#F97966',
-  },
-  favoriteToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    marginBottom: 20,
-  },
-  favoriteToggleText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-    marginLeft: 12,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
   },
   importDescription: {
     fontSize: 14,
@@ -1239,5 +816,12 @@ const styles = StyleSheet.create({
   },
   applyFiltersButton: {
     width: '100%',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
