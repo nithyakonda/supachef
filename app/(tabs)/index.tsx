@@ -483,8 +483,9 @@ const styles = StyleSheet.create({
   },
   titleAndEditContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    minHeight: 22, // Match the lineHeight of the text
   },
   recipeTitle: {
     fontSize: 16,
@@ -495,8 +496,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   editTitleButton: {
-    padding: 4,
+    width: 24,
+    height: 22, // Match the lineHeight for perfect alignment
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'transparent',
-    alignSelf: 'flex-start',
   },
 });
