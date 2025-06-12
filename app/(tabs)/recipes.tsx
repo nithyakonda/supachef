@@ -209,7 +209,7 @@ export default function RecipesScreen() {
   };
 
   const handleRecipePress = (recipe: Recipe) => {
-    router.push(`/recipes/${recipe.id}`);
+    router.push(`/recipe/${recipe.id}`);
   };
 
   const handleDeleteRecipe = async (recipeId: string) => {
