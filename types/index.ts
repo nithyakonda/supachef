@@ -55,9 +55,15 @@ export interface MealPlan {
 export interface Meal {
   id: string;
   type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  recipe?: Recipe;
+  recipeIds: string[]; // Array of recipe IDs from the recipes table
+  recipes?: Recipe[]; // Optional, populated when full recipe objects are fetched
   time?: string;
   isCompleted: boolean;
+  leftover?: boolean; // Flag for leftover meals
+  lunchbox?: boolean; // Flag for lunchbox meals
+  aiSuggested?: boolean; // Flag if the meal was AI-suggested
+  isPlaceholder?: boolean; // Flag for placeholder meals
+  suggestedRecipes?: Recipe[]; // Temporary storage for AI-suggested recipes not yet in recipes table
 }
 
 export interface WeeklyPlan {

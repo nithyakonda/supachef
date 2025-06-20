@@ -1,5 +1,5 @@
 import { supabase } from '@/utils/supabase';
-import { MealPlan, Meal } from '@/types';
+import { MealPlan, Meal, Recipe } from '@/types';
 import type { Database } from '@/utils/supabase';
 
 type MealPlanRow = Database['public']['Tables']['meal_plans']['Row'];
@@ -14,32 +14,44 @@ export interface MealPlanWithMeals extends MealPlan {
 // Transform database rows to MealPlan type
 const transformMealPlanFromDB = (
   planRow: MealPlanRow, 
-  mealRows: (PlanMealRow & { recipes: any })[] = []
+  mealRows: (PlanMealRow & { recipes?: any[] })[] = []
 ): MealPlanWithMeals => {
-  const meals: Meal[] = mealRows.map(mealRow => ({
-    id: mealRow.id,
-    type: mealRow.meal_type,
-    recipe: mealRow.recipes ? {
-      id: mealRow.recipes.id,
-      title: mealRow.recipes.title,
-      description: mealRow.recipes.description,
-      imageUrl: mealRow.recipes.image_url,
-      cookingTime: mealRow.recipes.cooking_time,
-      servings: mealRow.recipes.servings,
-      difficulty: mealRow.recipes.difficulty,
-      calories: mealRow.recipes.calories,
-      ingredients: mealRow.recipes.ingredients || [],
-      instructions: mealRow.recipes.instructions || [],
-      tags: mealRow.recipes.tags || [],
-      source: mealRow.recipes.source,
-      rating: mealRow.recipes.rating,
-      notes: mealRow.recipes.notes,
-      isFavorite: mealRow.recipes.is_favorite,
-      createdAt: new Date(mealRow.recipes.created_at),
-    } : undefined,
-    time: mealRow.meal_time || undefined,
-    isCompleted: mealRow.is_completed,
-  }));
+  const meals: Meal[] = mealRows.map(mealRow => {
+    // Fetch recipes for the recipe IDs
+    const recipes: Recipe[] = (mealRow.recipes || []).map(recipeData => ({
+      id: recipeData.id,
+      title: recipeData.title,
+      description: recipeData.description,
+      imageUrl: recipeData.image_url,
+      cookingTime: recipeData.cooking_time,
+      servings: recipeData.servings,
+      difficulty: recipeData.difficulty,
+      calories: recipeData.calories,
+      ingredients: recipeData.ingredients || [],
+      instructions: recipeData.instructions || [],
+      tags: recipeData.tags || [],
+      source: recipeData.source,
+      rating: recipeData.rating,
+      notes: recipeData.notes,
+      isFavorite: recipeData.is_favorite,
+      createdAt: new Date(recipeData.created_at),
+    }));
+
+    return {
+      id: mealRow.id,
+      type: mealRow.meal_type,
+      recipeIds: mealRow.recipe_ids || [],
+      recipes: recipes.length > 0 ? recipes : undefined,
+      time: mealRow.meal_time || undefined,
+      isCompleted: mealRow.is_completed,
+      leftover: mealRow.leftover || false,
+      lunchbox: mealRow.lunchbox || false,
+      aiSuggested: mealRow.ai_suggested || false,
+      isPlaceholder: mealRow.is_placeholder || false,
+      // Note: suggestedRecipes should be empty here since they're processed by the trigger
+      suggestedRecipes: undefined,
+    };
+  });
 
   return {
     id: planRow.id,
@@ -81,13 +93,10 @@ export const mealPlanService = {
       throw new Error('Failed to fetch meal plan');
     }
 
-    // Get meals for this plan
+    // Get meals for this plan with their recipes
     const { data: mealsData, error: mealsError } = await supabase
       .from('plan_meals')
-      .select(`
-        *,
-        recipes (*)
-      `)
+      .select('*')
       .eq('meal_plan_id', planData.id);
 
     if (mealsError) {
@@ -95,7 +104,34 @@ export const mealPlanService = {
       throw new Error('Failed to fetch plan meals');
     }
 
-    return transformMealPlanFromDB(planData, mealsData);
+    // Fetch recipes for all recipe IDs in the meals
+    const allRecipeIds = mealsData.flatMap(meal => meal.recipe_ids || []);
+    const uniqueRecipeIds = Array.from(new Set(allRecipeIds));
+
+    let recipesData: any[] = [];
+    if (uniqueRecipeIds.length > 0) {
+      const { data: fetchedRecipes, error: recipesError } = await supabase
+        .from('recipes')
+        .select('*')
+        .in('id', uniqueRecipeIds);
+
+      if (recipesError) {
+        console.error('Error fetching recipes:', recipesError);
+        throw new Error('Failed to fetch recipes');
+      }
+
+      recipesData = fetchedRecipes || [];
+    }
+
+    // Map recipes to meals
+    const mealsWithRecipes = mealsData.map(meal => ({
+      ...meal,
+      recipes: (meal.recipe_ids || []).map(recipeId => 
+        recipesData.find(recipe => recipe.id === recipeId)
+      ).filter(Boolean)
+    }));
+
+    return transformMealPlanFromDB(planData, mealsWithRecipes);
   },
 
   // Get meal plans for a date range
@@ -129,10 +165,7 @@ export const mealPlanService = {
 
     const { data: mealsData, error: mealsError } = await supabase
       .from('plan_meals')
-      .select(`
-        *,
-        recipes (*)
-      `)
+      .select('*')
       .in('meal_plan_id', planIds);
 
     if (mealsError) {
@@ -140,14 +173,41 @@ export const mealPlanService = {
       throw new Error('Failed to fetch plan meals');
     }
 
-    // Group meals by plan ID
+    // Fetch all recipes
+    const allRecipeIds = mealsData.flatMap(meal => meal.recipe_ids || []);
+    const uniqueRecipeIds = Array.from(new Set(allRecipeIds));
+
+    let recipesData: any[] = [];
+    if (uniqueRecipeIds.length > 0) {
+      const { data: fetchedRecipes, error: recipesError } = await supabase
+        .from('recipes')
+        .select('*')
+        .in('id', uniqueRecipeIds);
+
+      if (recipesError) {
+        console.error('Error fetching recipes:', recipesError);
+        throw new Error('Failed to fetch recipes');
+      }
+
+      recipesData = fetchedRecipes || [];
+    }
+
+    // Group meals by plan ID and add recipes
     const mealsByPlan = mealsData.reduce((acc, meal) => {
       if (!acc[meal.meal_plan_id]) {
         acc[meal.meal_plan_id] = [];
       }
-      acc[meal.meal_plan_id].push(meal);
+      
+      const mealWithRecipes = {
+        ...meal,
+        recipes: (meal.recipe_ids || []).map(recipeId => 
+          recipesData.find(recipe => recipe.id === recipeId)
+        ).filter(Boolean)
+      };
+      
+      acc[meal.meal_plan_id].push(mealWithRecipes);
       return acc;
-    }, {} as Record<string, typeof mealsData>);
+    }, {} as Record<string, any[]>);
 
     return plansData.map(plan => 
       transformMealPlanFromDB(plan, mealsByPlan[plan.id] || [])
@@ -188,26 +248,55 @@ export const mealPlanService = {
     // Create the meals
     const mealInserts: PlanMealInsert[] = meals.map(meal => ({
       meal_plan_id: planData.id,
-      recipe_id: meal.recipe!.id,
+      recipe_ids: meal.recipeIds || [],
       meal_type: meal.type,
       meal_time: meal.time || null,
       is_completed: meal.isCompleted,
+      leftover: meal.leftover || false,
+      lunchbox: meal.lunchbox || false,
+      ai_suggested: meal.aiSuggested || false,
+      is_placeholder: meal.isPlaceholder || false,
+      suggested_recipes: meal.suggestedRecipes || [],
     }));
 
     const { data: mealsData, error: mealsError } = await supabase
       .from('plan_meals')
       .insert(mealInserts)
-      .select(`
-        *,
-        recipes (*)
-      `);
+      .select('*');
 
     if (mealsError) {
       console.error('Error creating plan meals:', mealsError);
       throw new Error('Failed to create plan meals');
     }
 
-    return transformMealPlanFromDB(planData, mealsData);
+    // Fetch recipes for the created meals
+    const allRecipeIds = mealsData.flatMap(meal => meal.recipe_ids || []);
+    const uniqueRecipeIds = Array.from(new Set(allRecipeIds));
+
+    let recipesData: any[] = [];
+    if (uniqueRecipeIds.length > 0) {
+      const { data: fetchedRecipes, error: recipesError } = await supabase
+        .from('recipes')
+        .select('*')
+        .in('id', uniqueRecipeIds);
+
+      if (recipesError) {
+        console.error('Error fetching recipes:', recipesError);
+        throw new Error('Failed to fetch recipes');
+      }
+
+      recipesData = fetchedRecipes || [];
+    }
+
+    // Add recipes to meals
+    const mealsWithRecipes = mealsData.map(meal => ({
+      ...meal,
+      recipes: (meal.recipe_ids || []).map(recipeId => 
+        recipesData.find(recipe => recipe.id === recipeId)
+      ).filter(Boolean)
+    }));
+
+    return transformMealPlanFromDB(planData, mealsWithRecipes);
   },
 
   // Update meal completion status
@@ -220,6 +309,49 @@ export const mealPlanService = {
     if (error) {
       console.error('Error updating meal completion:', error);
       throw new Error('Failed to update meal completion');
+    }
+  },
+
+  // Update meal flags
+  updateMealFlags: async (
+    mealId: string, 
+    flags: {
+      leftover?: boolean;
+      lunchbox?: boolean;
+      aiSuggested?: boolean;
+      isPlaceholder?: boolean;
+    }
+  ): Promise<void> => {
+    const updateData: any = {};
+    if (flags.leftover !== undefined) updateData.leftover = flags.leftover;
+    if (flags.lunchbox !== undefined) updateData.lunchbox = flags.lunchbox;
+    if (flags.aiSuggested !== undefined) updateData.ai_suggested = flags.aiSuggested;
+    if (flags.isPlaceholder !== undefined) updateData.is_placeholder = flags.isPlaceholder;
+
+    const { error } = await supabase
+      .from('plan_meals')
+      .update(updateData)
+      .eq('id', mealId);
+
+    if (error) {
+      console.error('Error updating meal flags:', error);
+      throw new Error('Failed to update meal flags');
+    }
+  },
+
+  // Add suggested recipes to a meal (they will be automatically processed by the trigger)
+  addSuggestedRecipesToMeal: async (mealId: string, suggestedRecipes: Recipe[]): Promise<void> => {
+    const { error } = await supabase
+      .from('plan_meals')
+      .update({ 
+        suggested_recipes: suggestedRecipes,
+        ai_suggested: true 
+      })
+      .eq('id', mealId);
+
+    if (error) {
+      console.error('Error adding suggested recipes:', error);
+      throw new Error('Failed to add suggested recipes');
     }
   },
 
@@ -250,7 +382,7 @@ export const mealPlanService = {
     const { data, error } = await supabase
       .from('plan_meals')
       .select(`
-        recipe_id,
+        recipe_ids,
         meal_plans!inner (
           user_id,
           plan_date
@@ -264,7 +396,8 @@ export const mealPlanService = {
       throw new Error('Failed to fetch recently used recipes');
     }
 
-    return Array.from(new Set(data.map(item => item.recipe_id)));
+    const allRecipeIds = data.flatMap(item => item.recipe_ids || []);
+    return Array.from(new Set(allRecipeIds));
   },
 
   // Get meal plan statistics
@@ -273,6 +406,8 @@ export const mealPlanService = {
     completedMeals: number;
     totalMeals: number;
     favoriteRecipes: string[];
+    aiSuggestedMeals: number;
+    placeholderMeals: number;
   }> => {
     const userId = await mealPlanService.getCurrentUserId();
     if (!userId) {
@@ -295,7 +430,9 @@ export const mealPlanService = {
       .from('plan_meals')
       .select(`
         is_completed,
-        recipe_id,
+        recipe_ids,
+        ai_suggested,
+        is_placeholder,
         meal_plans!inner (
           user_id
         )
@@ -309,10 +446,13 @@ export const mealPlanService = {
 
     const completedMeals = mealStats.filter(meal => meal.is_completed).length;
     const totalMeals = mealStats.length;
+    const aiSuggestedMeals = mealStats.filter(meal => meal.ai_suggested).length;
+    const placeholderMeals = mealStats.filter(meal => meal.is_placeholder).length;
 
     // Get most used recipes
-    const recipeUsage = mealStats.reduce((acc, meal) => {
-      acc[meal.recipe_id] = (acc[meal.recipe_id] || 0) + 1;
+    const allRecipeIds = mealStats.flatMap(meal => meal.recipe_ids || []);
+    const recipeUsage = allRecipeIds.reduce((acc, recipeId) => {
+      acc[recipeId] = (acc[recipeId] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -326,6 +466,8 @@ export const mealPlanService = {
       completedMeals,
       totalMeals,
       favoriteRecipes,
+      aiSuggestedMeals,
+      placeholderMeals,
     };
   },
 };

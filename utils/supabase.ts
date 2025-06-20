@@ -166,28 +166,46 @@ export interface Database {
         Row: {
           id: string;
           meal_plan_id: string;
-          recipe_id: string;
+          recipe_id: string | null; // Made nullable for transition
+          recipe_ids: string[]; // New array field
           meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
           meal_time: string | null;
           is_completed: boolean;
+          leftover: boolean;
+          lunchbox: boolean;
+          ai_suggested: boolean;
+          is_placeholder: boolean;
+          suggested_recipes: any[]; // JSONB array
           created_at: string;
         };
         Insert: {
           id?: string;
           meal_plan_id: string;
-          recipe_id: string;
+          recipe_id?: string | null;
+          recipe_ids?: string[];
           meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
           meal_time?: string | null;
           is_completed?: boolean;
+          leftover?: boolean;
+          lunchbox?: boolean;
+          ai_suggested?: boolean;
+          is_placeholder?: boolean;
+          suggested_recipes?: any[];
           created_at?: string;
         };
         Update: {
           id?: string;
           meal_plan_id?: string;
-          recipe_id?: string;
+          recipe_id?: string | null;
+          recipe_ids?: string[];
           meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
           meal_time?: string | null;
           is_completed?: boolean;
+          leftover?: boolean;
+          lunchbox?: boolean;
+          ai_suggested?: boolean;
+          is_placeholder?: boolean;
+          suggested_recipes?: any[];
           created_at?: string;
         };
       };
