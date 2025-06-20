@@ -162,7 +162,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      plan_meals: {
+      meal_entries: {
         Row: {
           id: string;
           meal_plan_id: string;

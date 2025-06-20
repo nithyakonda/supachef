@@ -4,8 +4,8 @@ import type { Database } from '@/utils/supabase';
 
 type MealPlanRow = Database['public']['Tables']['meal_plans']['Row'];
 type MealPlanInsert = Database['public']['Tables']['meal_plans']['Insert'];
-type PlanMealRow = Database['public']['Tables']['plan_meals']['Row'];
-type PlanMealInsert = Database['public']['Tables']['plan_meals']['Insert'];
+type MealEntryRow = Database['public']['Tables']['meal_entries']['Row'];
+type MealEntryInsert = Database['public']['Tables']['meal_entries']['Insert'];
 
 export interface MealPlanWithMeals extends MealPlan {
   meals: Meal[];
@@ -14,7 +14,7 @@ export interface MealPlanWithMeals extends MealPlan {
 // Transform database rows to MealPlan type
 const transformMealPlanFromDB = (
   planRow: MealPlanRow, 
-  mealRows: (PlanMealRow & { recipes?: any[] })[] = []
+  mealRows: (MealEntryRow & { recipes?: any[] })[] = []
 ): MealPlanWithMeals => {
   const meals: Meal[] = mealRows.map(mealRow => {
     // Fetch recipes for the recipe IDs
@@ -95,13 +95,13 @@ export const mealPlanService = {
 
     // Get meals for this plan with their recipes
     const { data: mealsData, error: mealsError } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .select('*')
       .eq('meal_plan_id', planData.id);
 
     if (mealsError) {
-      console.error('Error fetching plan meals:', mealsError);
-      throw new Error('Failed to fetch plan meals');
+      console.error('Error fetching meal entries:', mealsError);
+      throw new Error('Failed to fetch meal entries');
     }
 
     // Fetch recipes for all recipe IDs in the meals
@@ -164,13 +164,13 @@ export const mealPlanService = {
     }
 
     const { data: mealsData, error: mealsError } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .select('*')
       .in('meal_plan_id', planIds);
 
     if (mealsError) {
-      console.error('Error fetching plan meals:', mealsError);
-      throw new Error('Failed to fetch plan meals');
+      console.error('Error fetching meal entries:', mealsError);
+      throw new Error('Failed to fetch meal entries');
     }
 
     // Fetch all recipes
@@ -246,7 +246,7 @@ export const mealPlanService = {
     }
 
     // Create the meals
-    const mealInserts: PlanMealInsert[] = meals.map(meal => ({
+    const mealInserts: MealEntryInsert[] = meals.map(meal => ({
       meal_plan_id: planData.id,
       recipe_ids: meal.recipeIds || [],
       meal_type: meal.type,
@@ -260,13 +260,13 @@ export const mealPlanService = {
     }));
 
     const { data: mealsData, error: mealsError } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .insert(mealInserts)
       .select('*');
 
     if (mealsError) {
-      console.error('Error creating plan meals:', mealsError);
-      throw new Error('Failed to create plan meals');
+      console.error('Error creating meal entries:', mealsError);
+      throw new Error('Failed to create meal entries');
     }
 
     // Fetch recipes for the created meals
@@ -302,7 +302,7 @@ export const mealPlanService = {
   // Update meal completion status
   updateMealCompletion: async (mealId: string, isCompleted: boolean): Promise<void> => {
     const { error } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .update({ is_completed: isCompleted })
       .eq('id', mealId);
 
@@ -329,7 +329,7 @@ export const mealPlanService = {
     if (flags.isPlaceholder !== undefined) updateData.is_placeholder = flags.isPlaceholder;
 
     const { error } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .update(updateData)
       .eq('id', mealId);
 
@@ -342,7 +342,7 @@ export const mealPlanService = {
   // Add suggested recipes to a meal (they will be automatically processed by the trigger)
   addSuggestedRecipesToMeal: async (mealId: string, suggestedRecipes: Recipe[]): Promise<void> => {
     const { error } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .update({ 
         suggested_recipes: suggestedRecipes,
         ai_suggested: true 
@@ -380,7 +380,7 @@ export const mealPlanService = {
     const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
     const { data, error } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .select(`
         recipe_ids,
         meal_plans!inner (
@@ -427,7 +427,7 @@ export const mealPlanService = {
 
     // Get meal completion stats
     const { data: mealStats, error: mealStatsError } = await supabase
-      .from('plan_meals')
+      .from('meal_entries')
       .select(`
         is_completed,
         recipe_ids,
