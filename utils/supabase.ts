@@ -166,8 +166,7 @@ export interface Database {
         Row: {
           id: string;
           meal_plan_id: string;
-          recipe_id: string | null; // Made nullable for transition
-          recipe_ids: string[]; // New array field
+          recipe_ids: string[]; // Array of recipe IDs
           meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
           meal_time: string | null;
           is_completed: boolean;
@@ -181,7 +180,6 @@ export interface Database {
         Insert: {
           id?: string;
           meal_plan_id: string;
-          recipe_id?: string | null;
           recipe_ids?: string[];
           meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
           meal_time?: string | null;
@@ -196,7 +194,6 @@ export interface Database {
         Update: {
           id?: string;
           meal_plan_id?: string;
-          recipe_id?: string | null;
           recipe_ids?: string[];
           meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
           meal_time?: string | null;
