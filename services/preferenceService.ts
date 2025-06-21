@@ -78,16 +78,20 @@ export const preferenceService = {
   },
 
   // Get user preferences
-  getUserPreferences: async (): Promise<UserPreferences | null> => {
-    const userId = await preferenceService.getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
+  getUserPreferences: async (userId?: string): Promise<UserPreferences | null> => {
+    let targetUserId = userId;
+    
+    if (!targetUserId) {
+      targetUserId = await preferenceService.getCurrentUserId();
+      if (!targetUserId) {
+        throw new Error('User not authenticated');
+      }
     }
 
     const { data, error } = await supabase
       .from('user_preferences')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', targetUserId)
       .single();
 
     if (error) {
@@ -102,15 +106,19 @@ export const preferenceService = {
   },
 
   // Create user preferences
-  createUserPreferences: async (preferences: Omit<UserPreferences, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<UserPreferences> => {
-    const userId = await preferenceService.getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
+  createUserPreferences: async (preferences: Omit<UserPreferences, 'id' | 'userId' | 'createdAt' | 'updatedAt'>, userId?: string): Promise<UserPreferences> => {
+    let targetUserId = userId;
+    
+    if (!targetUserId) {
+      targetUserId = await preferenceService.getCurrentUserId();
+      if (!targetUserId) {
+        throw new Error('User not authenticated');
+      }
     }
 
     const { data, error } = await supabase
       .from('user_preferences')
-      .insert(transformPreferencesForDB(preferences, userId))
+      .insert(transformPreferencesForDB(preferences, targetUserId))
       .select()
       .single();
 
@@ -123,16 +131,20 @@ export const preferenceService = {
   },
 
   // Update user preferences
-  updateUserPreferences: async (preferences: Partial<UserPreferences>): Promise<UserPreferences> => {
-    const userId = await preferenceService.getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
+  updateUserPreferences: async (preferences: Partial<UserPreferences>, userId?: string): Promise<UserPreferences> => {
+    let targetUserId = userId;
+    
+    if (!targetUserId) {
+      targetUserId = await preferenceService.getCurrentUserId();
+      if (!targetUserId) {
+        throw new Error('User not authenticated');
+      }
     }
 
     const { data, error } = await supabase
       .from('user_preferences')
       .update(transformPreferencesForUpdate(preferences))
-      .eq('user_id', userId)
+      .eq('user_id', targetUserId)
       .select()
       .single();
 
@@ -145,13 +157,13 @@ export const preferenceService = {
   },
 
   // Save or update user preferences (upsert)
-  saveUserPreferences: async (preferences: Omit<UserPreferences, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<UserPreferences> => {
-    const existingPreferences = await preferenceService.getUserPreferences();
+  saveUserPreferences: async (preferences: Omit<UserPreferences, 'id' | 'userId' | 'createdAt' | 'updatedAt'>, userId?: string): Promise<UserPreferences> => {
+    const existingPreferences = await preferenceService.getUserPreferences(userId);
     
     if (existingPreferences) {
-      return await preferenceService.updateUserPreferences(preferences);
+      return await preferenceService.updateUserPreferences(preferences, userId);
     } else {
-      return await preferenceService.createUserPreferences(preferences);
+      return await preferenceService.createUserPreferences(preferences, userId);
     }
   },
 
@@ -170,9 +182,9 @@ export const preferenceService = {
   }),
 
   // Initialize preferences for new user
-  initializeUserPreferences: async (): Promise<UserPreferences> => {
+  initializeUserPreferences: async (userId?: string): Promise<UserPreferences> => {
     const defaultPreferences = preferenceService.getDefaultPreferences();
-    return await preferenceService.createUserPreferences(defaultPreferences);
+    return await preferenceService.createUserPreferences(defaultPreferences, userId);
   },
 };
 

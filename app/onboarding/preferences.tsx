@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
@@ -28,6 +28,7 @@ const PREFERENCE_STEPS = [
 ];
 
 export default function PreferencesScreen() {
+  const { userId } = useLocalSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItemText, setNewItemText] = useState('');
@@ -72,7 +73,7 @@ export default function PreferencesScreen() {
           numberOfKids: preferences.kids,
         };
 
-        await preferenceService.saveUserPreferences(preferencesToSave);
+        await preferenceService.saveUserPreferences(preferencesToSave, userId as string);
         router.push('/onboarding/complete');
       } catch (error) {
         console.error('Error saving preferences:', error);

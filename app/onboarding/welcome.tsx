@@ -78,8 +78,11 @@ export default function WelcomeScreen() {
         }
 
         if (data.user) {
-          // Successfully signed up, go to preferences setup
-          router.push('/onboarding/preferences');
+          // Successfully signed up, go to preferences setup with user ID
+          router.push({
+            pathname: '/onboarding/preferences',
+            params: { userId: data.user.id }
+          });
         }
       }
     } catch (error) {
