@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
+import { supabase } from '@/utils/supabase';
 
 export default function WelcomeScreen() {
   const { mode } = useLocalSearchParams();
@@ -19,6 +20,8 @@ export default function WelcomeScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Set initial mode based on URL parameter
   useEffect(() => {
@@ -27,23 +30,63 @@ export default function WelcomeScreen() {
     }
   }, [mode]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name && !isLogin) {
-      Alert.alert('Error', 'Please enter your name');
+      setAuthError('Please enter your name');
       return;
     }
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setAuthError('Please fill in all fields');
       return;
     }
 
-    // Mock authentication - in real app, connect to Firebase/Supabase
-    if (isLogin) {
-      // For existing users signing in, go directly to main app
-      router.replace('/(tabs)');
-    } else {
-      // For new users signing up, go to preferences quiz
-      router.push('/onboarding/preferences');
+    setLoading(true);
+    setAuthError(null);
+
+    try {
+      if (isLogin) {
+        // Sign in existing user
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+
+        if (data.user) {
+          // Successfully signed in, go to main app
+          router.replace('/(tabs)');
+        }
+      } else {
+        // Sign up new user
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+            },
+          },
+        });
+
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+
+        if (data.user) {
+          // Successfully signed up, go to preferences setup
+          router.push('/onboarding/preferences');
+        }
+      }
+    } catch (error) {
+      setAuthError('An unexpected error occurred. Please try again.');
+      console.error('Authentication error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,10 +96,11 @@ export default function WelcomeScreen() {
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
-    // Clear form when switching modes
+    // Clear form and errors when switching modes
     setName('');
     setEmail('');
     setPassword('');
+    setAuthError(null);
   };
 
   return (
@@ -85,6 +129,13 @@ export default function WelcomeScreen() {
             }
           </Text>
 
+          {/* Error Message */}
+          {authError && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{authError}</Text>
+            </View>
+          )}
+
           <View style={styles.inputContainer}>
             {!isLogin && (
               <View style={styles.inputGroup}>
@@ -96,6 +147,7 @@ export default function WelcomeScreen() {
                   onChangeText={setName}
                   autoCapitalize="words"
                   placeholderTextColor="#9CA3AF"
+                  editable={!loading}
                 />
               </View>
             )}
@@ -110,6 +162,7 @@ export default function WelcomeScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor="#9CA3AF"
+                editable={!loading}
               />
             </View>
 
@@ -123,10 +176,12 @@ export default function WelcomeScreen() {
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   placeholderTextColor="#9CA3AF"
+                  editable={!loading}
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
                   onPress={() => setShowPassword(!showPassword)}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff size={20} color="#9CA3AF" />
@@ -138,23 +193,25 @@ export default function WelcomeScreen() {
             </View>
 
             {isLogin && (
-              <TouchableOpacity style={styles.forgotPassword}>
+              <TouchableOpacity style={styles.forgotPassword} disabled={loading}>
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
             )}
           </View>
 
           <Button
-            title={isLogin ? 'Sign In' : 'Create Account'}
+            title={loading ? (isLogin ? 'Signing In...' : 'Creating Account...') : (isLogin ? 'Sign In' : 'Create Account')}
             onPress={handleSubmit}
             variant="primary"
             size="large"
             style={styles.submitButton}
+            disabled={loading}
           />
 
           <TouchableOpacity
             style={styles.switchMode}
             onPress={toggleMode}
+            disabled={loading}
           >
             <Text style={styles.switchText}>
               {isLogin 
@@ -219,6 +276,21 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 32,
     lineHeight: 24,
+  },
+  errorContainer: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 32,
