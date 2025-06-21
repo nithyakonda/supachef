@@ -71,10 +71,19 @@ const transformPreferencesForUpdate = (preferences: Partial<UserPreferences>): U
 });
 
 export const preferenceService = {
-  // Get current user ID
-  getCurrentUserId: async (): Promise<string | null> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id || null;
+  // Get current user ID and check authentication status
+  getCurrentUserId: async (): Promise<{ userId: string | null; isAuthenticated: boolean; emailConfirmed: boolean }> => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      return { userId: null, isAuthenticated: false, emailConfirmed: false };
+    }
+
+    return {
+      userId: user.id,
+      isAuthenticated: true,
+      emailConfirmed: !!user.email_confirmed_at
+    };
   },
 
   // Get user preferences
@@ -82,10 +91,11 @@ export const preferenceService = {
     let targetUserId = userId;
     
     if (!targetUserId) {
-      targetUserId = await preferenceService.getCurrentUserId();
-      if (!targetUserId) {
+      const { userId: currentUserId, isAuthenticated } = await preferenceService.getCurrentUserId();
+      if (!isAuthenticated || !currentUserId) {
         throw new Error('User not authenticated');
       }
+      targetUserId = currentUserId;
     }
 
     const { data, error } = await supabase
@@ -99,7 +109,7 @@ export const preferenceService = {
         return null; // Preferences not found
       }
       console.error('Error fetching user preferences:', error);
-      throw new Error('Failed to fetch user preferences');
+      throw new Error(`Failed to fetch user preferences: ${error.message}`);
     }
 
     return transformPreferencesFromDB(data);
@@ -110,21 +120,40 @@ export const preferenceService = {
     let targetUserId = userId;
     
     if (!targetUserId) {
-      targetUserId = await preferenceService.getCurrentUserId();
-      if (!targetUserId) {
+      const { userId: currentUserId, isAuthenticated, emailConfirmed } = await preferenceService.getCurrentUserId();
+      if (!isAuthenticated || !currentUserId) {
         throw new Error('User not authenticated');
       }
+      
+      // Log authentication status for debugging
+      console.log('User authentication status:', { 
+        isAuthenticated, 
+        emailConfirmed, 
+        userId: currentUserId 
+      });
+      
+      targetUserId = currentUserId;
     }
 
+    const insertData = transformPreferencesForDB(preferences, targetUserId);
+    
     const { data, error } = await supabase
       .from('user_preferences')
-      .insert(transformPreferencesForDB(preferences, targetUserId))
+      .insert(insertData)
       .select()
       .single();
 
     if (error) {
       console.error('Error creating user preferences:', error);
-      throw new Error('Failed to create user preferences');
+      
+      // Provide more specific error messages based on error codes
+      if (error.code === '42501') {
+        throw new Error('Permission denied. Please ensure your email is confirmed or contact support.');
+      } else if (error.code === '23505') {
+        throw new Error('User preferences already exist. Try updating instead.');
+      } else {
+        throw new Error(`Failed to create user preferences: ${error.message}`);
+      }
     }
 
     return transformPreferencesFromDB(data);
@@ -135,10 +164,11 @@ export const preferenceService = {
     let targetUserId = userId;
     
     if (!targetUserId) {
-      targetUserId = await preferenceService.getCurrentUserId();
-      if (!targetUserId) {
+      const { userId: currentUserId, isAuthenticated } = await preferenceService.getCurrentUserId();
+      if (!isAuthenticated || !currentUserId) {
         throw new Error('User not authenticated');
       }
+      targetUserId = currentUserId;
     }
 
     const { data, error } = await supabase
@@ -150,7 +180,7 @@ export const preferenceService = {
 
     if (error) {
       console.error('Error updating user preferences:', error);
-      throw new Error('Failed to update user preferences');
+      throw new Error(`Failed to update user preferences: ${error.message}`);
     }
 
     return transformPreferencesFromDB(data);
@@ -158,12 +188,17 @@ export const preferenceService = {
 
   // Save or update user preferences (upsert)
   saveUserPreferences: async (preferences: Omit<UserPreferences, 'id' | 'userId' | 'createdAt' | 'updatedAt'>, userId?: string): Promise<UserPreferences> => {
-    const existingPreferences = await preferenceService.getUserPreferences(userId);
-    
-    if (existingPreferences) {
-      return await preferenceService.updateUserPreferences(preferences, userId);
-    } else {
-      return await preferenceService.createUserPreferences(preferences, userId);
+    try {
+      const existingPreferences = await preferenceService.getUserPreferences(userId);
+      
+      if (existingPreferences) {
+        return await preferenceService.updateUserPreferences(preferences, userId);
+      } else {
+        return await preferenceService.createUserPreferences(preferences, userId);
+      }
+    } catch (error) {
+      console.error('Error in saveUserPreferences:', error);
+      throw error;
     }
   },
 
@@ -185,6 +220,21 @@ export const preferenceService = {
   initializeUserPreferences: async (userId?: string): Promise<UserPreferences> => {
     const defaultPreferences = preferenceService.getDefaultPreferences();
     return await preferenceService.createUserPreferences(defaultPreferences, userId);
+  },
+
+  // Check if user can save preferences (for UI feedback)
+  canSavePreferences: async (): Promise<{ canSave: boolean; reason?: string }> => {
+    const { isAuthenticated, emailConfirmed } = await preferenceService.getCurrentUserId();
+    
+    if (!isAuthenticated) {
+      return { canSave: false, reason: 'User not authenticated' };
+    }
+    
+    if (!emailConfirmed) {
+      return { canSave: false, reason: 'Email not confirmed' };
+    }
+    
+    return { canSave: true };
   },
 };
 
