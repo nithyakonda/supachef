@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import { cuisineOptions, dietaryRestrictions, mealTypes, weekDays } from '@/data/sampleData';
+import { preferenceService } from '@/services/preferenceService';
 
 const PREFERENCE_STEPS = [
   'cuisines',
@@ -31,6 +32,7 @@ export default function PreferencesScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [addingToCategory, setAddingToCategory] = useState<string>('');
+  const [loading, setLoading] = useState(false);
   const [customOptions, setCustomOptions] = useState({
     cuisines: [] as string[],
     dietary: [] as string[],
@@ -49,11 +51,39 @@ export default function PreferencesScreen() {
     planningDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as string[], // Default weekdays
   });
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < PREFERENCE_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      router.push('/onboarding/complete');
+      // Last step - save preferences and complete onboarding
+      setLoading(true);
+      try {
+        // Transform preferences to match the service interface
+        const preferencesToSave = {
+          favoriteCuisines: preferences.cuisines,
+          mealPlanningDays: preferences.planningDays,
+          dietaryRestrictions: preferences.dietary,
+          allergies: preferences.allergies,
+          mealTypes: preferences.mealTypes,
+          cookingExperience: preferences.experience as 'Beginner' | 'Intermediate' | 'Expert',
+          needsLunchbox: preferences.needsLunchbox,
+          prefersLeftovers: preferences.prefersLeftovers,
+          numberOfAdults: preferences.adults,
+          numberOfKids: preferences.kids,
+        };
+
+        await preferenceService.saveUserPreferences(preferencesToSave);
+        router.push('/onboarding/complete');
+      } catch (error) {
+        console.error('Error saving preferences:', error);
+        Alert.alert(
+          'Error',
+          'Failed to save your preferences. Please try again.',
+          [{ text: 'OK' }]
+        );
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -493,11 +523,12 @@ export default function PreferencesScreen() {
 
       <View style={styles.footer}>
         <Button
-          title={currentStep === PREFERENCE_STEPS.length - 1 ? 'Complete Setup' : 'Next'}
+          title={loading ? 'Saving...' : (currentStep === PREFERENCE_STEPS.length - 1 ? 'Complete Setup' : 'Next')}
           onPress={handleNext}
           variant="primary"
           size="large"
           style={styles.nextButton}
+          disabled={loading}
         />
       </View>
 
