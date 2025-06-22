@@ -10,11 +10,12 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import { cuisineOptions, dietaryRestrictions, mealTypes, weekDays } from '@/data/sampleData';
+import { preferenceService } from '@/services/preferenceService';
 
 const PREFERENCE_STEPS = [
   'cuisines',
@@ -27,10 +28,13 @@ const PREFERENCE_STEPS = [
 ];
 
 export default function PreferencesScreen() {
+  const { userId } = useLocalSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [addingToCategory, setAddingToCategory] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [customOptions, setCustomOptions] = useState({
     cuisines: [] as string[],
     dietary: [] as string[],
@@ -49,17 +53,78 @@ export default function PreferencesScreen() {
     planningDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as string[], // Default weekdays
   });
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < PREFERENCE_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
+      setError(null); // Clear any previous errors when moving to next step
     } else {
-      router.push('/onboarding/complete');
+      // Last step - save preferences and complete onboarding
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Check if user can save preferences first
+        const { canSave, reason } = await preferenceService.canSavePreferences();
+        
+        if (!canSave) {
+          if (reason === 'Email not confirmed') {
+            setError('Please check your email and confirm your account before completing setup. You can also complete setup later from the settings page.');
+            setLoading(false);
+            return;
+          } else {
+            throw new Error(reason || 'Unable to save preferences');
+          }
+        }
+
+        // Transform preferences to match the service interface
+        const preferencesToSave = {
+          favoriteCuisines: preferences.cuisines,
+          mealPlanningDays: preferences.planningDays,
+          dietaryRestrictions: preferences.dietary,
+          allergies: preferences.allergies,
+          mealTypes: preferences.mealTypes,
+          cookingExperience: preferences.experience as 'Beginner' | 'Intermediate' | 'Expert',
+          needsLunchbox: preferences.needsLunchbox,
+          prefersLeftovers: preferences.prefersLeftovers,
+          numberOfAdults: preferences.adults,
+          numberOfKids: preferences.kids,
+        };
+
+        await preferenceService.saveUserPreferences(preferencesToSave, userId as string);
+        router.push('/onboarding/complete');
+      } catch (error: any) {
+        console.error('Error saving preferences:', error);
+        
+        // Provide user-friendly error messages
+        let errorMessage = 'Failed to save your preferences. Please try again.';
+        
+        if (error.message?.includes('Permission denied')) {
+          errorMessage = 'Please confirm your email address before completing setup. Check your email for a confirmation link.';
+        } else if (error.message?.includes('not authenticated')) {
+          errorMessage = 'Authentication error. Please sign in again.';
+        } else if (error.message?.includes('already exist')) {
+          errorMessage = 'Your preferences already exist. Updating them now...';
+          // Try to update instead
+          try {
+            await preferenceService.updateUserPreferences(preferencesToSave, userId as string);
+            router.push('/onboarding/complete');
+            return;
+          } catch (updateError) {
+            errorMessage = 'Failed to update your preferences. Please try again.';
+          }
+        }
+        
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      setError(null); // Clear errors when going back
     } else {
       router.back();
     }
@@ -489,15 +554,31 @@ export default function PreferencesScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {renderCurrentStep()}
+        
+        {/* Error message display */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            {error.includes('email') && (
+              <TouchableOpacity 
+                style={styles.skipButton}
+                onPress={() => router.push('/onboarding/complete')}
+              >
+                <Text style={styles.skipButtonText}>Skip for now</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
         <Button
-          title={currentStep === PREFERENCE_STEPS.length - 1 ? 'Complete Setup' : 'Next'}
+          title={loading ? 'Saving...' : (currentStep === PREFERENCE_STEPS.length - 1 ? 'Complete Setup' : 'Next')}
           onPress={handleNext}
           variant="primary"
           size="large"
           style={styles.nextButton}
+          disabled={loading}
         />
       </View>
 
@@ -699,6 +780,35 @@ const styles = StyleSheet.create({
   selectedToggleText: {
     color: '#F97966',
     fontFamily: 'Inter-SemiBold',
+  },
+  errorContainer: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#DC2626',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  skipButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  skipButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
   },
   footer: {
     paddingHorizontal: 24,
