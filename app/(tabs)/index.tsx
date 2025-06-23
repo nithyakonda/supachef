@@ -218,16 +218,16 @@ export default function HomeScreen() {
                                           </TouchableOpacity>
                                         </View>
                                         
-                                        {/* Meal Flags */}
+                                        {/* Meal Flags - Anchored to bottom */}
                                         <View style={styles.mealFlagsContainer}>
                                           {meal.mealRecipes[0].leftover && (
-                                            <View style={styles.flagChip}>
-                                              <Text style={styles.flagChipText}>Leftover</Text>
+                                            <View style={[styles.flagChip, styles.leftoverChip]}>
+                                              <Text style={[styles.flagChipText, styles.leftoverChipText]}>Leftover</Text>
                                             </View>
                                           )}
                                           {meal.mealRecipes[0].lunchbox && (
-                                            <View style={styles.flagChip}>
-                                              <Text style={styles.flagChipText}>Lunchbox</Text>
+                                            <View style={[styles.flagChip, styles.lunchboxChip]}>
+                                              <Text style={[styles.flagChipText, styles.lunchboxChipText]}>Lunchbox</Text>
                                             </View>
                                           )}
                                           {meal.mealRecipes[0].aiSuggested && (
@@ -416,13 +416,15 @@ const styles = StyleSheet.create({
   },
   recipeTextAndButtons: {
     flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    minHeight: 80, // Match the image height to ensure proper spacing
   },
   titleAndEditContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     minHeight: 22, // Match the lineHeight of the text
-    marginBottom: 8,
   },
   recipeTitle: {
     fontSize: 16,
@@ -443,6 +445,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+    alignSelf: 'flex-start', // Anchor to the left
   },
   flagChip: {
     paddingHorizontal: 10,
@@ -456,6 +459,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Inter-SemiBold',
     color: '#6B7280',
+  },
+  leftoverChip: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FEDD9F',
+  },
+  leftoverChipText: {
+    color: '#D97706',
+  },
+  lunchboxChip: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#CBC87D',
+  },
+  lunchboxChipText: {
+    color: '#65A30D',
   },
   aiSuggestedChip: {
     backgroundColor: '#FEF3F2',
