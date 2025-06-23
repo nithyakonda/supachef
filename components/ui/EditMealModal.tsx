@@ -149,6 +149,12 @@ export default function EditMealModal({
     onSave(updatedMealRecipes, selectedDayIndex, selectedMealType);
   };
 
+  const handleDeleteRecipeFromMeal = () => {
+    // Remove the current recipe from the meal by passing an empty array
+    // This will signal to the parent component to remove this meal entry
+    onSave([], selectedDayIndex, selectedMealType);
+  };
+
   const handleCancel = () => {
     setSearchQuery('');
     setSelectedRecipe(null);
@@ -162,7 +168,6 @@ export default function EditMealModal({
 
   const showSuggestions = searchQuery.length > 0 && !selectedRecipe && filteredRecipes.length > 0;
   const showCustomPreview = searchQuery.length > 0 && !selectedRecipe && customTitle.trim().length > 0;
-  const showSelectedPreview = selectedRecipe !== null;
 
   return (
     <Modal
@@ -184,9 +189,73 @@ export default function EditMealModal({
           </View>
 
           <ScrollView style={styles.contentScrollView} showsVerticalScrollIndicator={false}>
-            {/* Day Selection */}
+            {/* 1. Selected Recipe Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Select Day</Text>
+              <Text style={styles.sectionTitle}>Selected Recipe</Text>
+              
+              {/* Search Bar */}
+              <View style={styles.searchInputContainer}>
+                <Search size={20} color="#9CA3AF" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search recipes or type custom meal name..."
+                  value={searchQuery}
+                  onChangeText={handleSearchChange}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              {/* Recipe Suggestions */}
+              {showSuggestions && (
+                <View style={styles.suggestionsContainer}>
+                  {filteredRecipes.map((recipe) => (
+                    <TouchableOpacity
+                      key={recipe.id}
+                      style={styles.suggestionItem}
+                      onPress={() => handleRecipeSelect(recipe)}
+                    >
+                      <Image
+                        source={{ uri: recipe.imageUrl }}
+                        style={styles.suggestionImage}
+                      />
+                      <View style={styles.suggestionInfo}>
+                        <Text style={styles.suggestionTitle}>{recipe.title}</Text>
+                        <Text style={styles.suggestionDetails}>
+                          {recipe.cookingTime} min • {recipe.calories} cal
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Custom Meal Preview */}
+              {showCustomPreview && (
+                <View style={styles.previewCard}>
+                  <Image
+                    source={{ uri: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg' }}
+                    style={styles.previewImage}
+                  />
+                  <View style={styles.previewInfo}>
+                    <Text style={styles.previewRecipeTitle}>{customTitle}</Text>
+                    <Text style={styles.previewRecipeDetails}>Custom meal</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* No results message */}
+              {searchQuery.length > 0 && filteredRecipes.length === 0 && !showCustomPreview && (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>
+                    No recipes found. Keep typing to create a custom meal.
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* 2. Move to Day Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Move to Day</Text>
               <View style={styles.chipsContainer}>
                 {availableDays.map((day) => (
                   <Chip
@@ -199,9 +268,9 @@ export default function EditMealModal({
               </View>
             </View>
 
-            {/* Meal Type Selection */}
+            {/* 3. Move to Meal Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Select Meal Type</Text>
+              <Text style={styles.sectionTitle}>Move to Meal</Text>
               <View style={styles.chipsContainer}>
                 {allMealTypes.map((mealType) => (
                   <Chip
@@ -214,164 +283,32 @@ export default function EditMealModal({
               </View>
             </View>
 
-            {/* Search Bar */}
+            {/* 4. Meal Options Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Recipe</Text>
-              <View style={styles.searchInputContainer}>
-                <Search size={20} color="#9CA3AF" />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search recipes or type custom meal name..."
-                  value={searchQuery}
-                  onChangeText={handleSearchChange}
-                  placeholderTextColor="#9CA3AF"
+              <Text style={styles.sectionTitle}>Meal Options</Text>
+              <View style={styles.chipsContainer}>
+                <Chip
+                  label="Leftover"
+                  selected={isLeftover}
+                  onPress={() => setIsLeftover(!isLeftover)}
+                />
+                <Chip
+                  label="Lunchbox"
+                  selected={isLunchbox}
+                  onPress={() => setIsLunchbox(!isLunchbox)}
                 />
               </View>
             </View>
-
-            {/* Meal Flags Section */}
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Meal Options</Text>
-              <Text style={styles.sectionSubtitle}>Select any options that apply to this meal</Text>
-              <View style={styles.flagsContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.flagOption,
-                    isLeftover && styles.selectedFlagOption
-                  ]}
-                  onPress={() => setIsLeftover(!isLeftover)}
-                >
-                  <View style={styles.flagOptionContent}>
-                    <Text style={[
-                      styles.flagOptionTitle,
-                      isLeftover && styles.selectedFlagText
-                    ]}>
-                      Leftover
-                    </Text>
-                    <Text style={[
-                      styles.flagOptionDescription,
-                      isLeftover && styles.selectedFlagDescription
-                    ]}>
-                      This meal uses leftovers from a previous meal
-                    </Text>
-                  </View>
-                  <View style={[
-                    styles.flagCheckbox,
-                    isLeftover && styles.selectedCheckbox
-                  ]}>
-                    {isLeftover && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.flagOption,
-                    isLunchbox && styles.selectedFlagOption
-                  ]}
-                  onPress={() => setIsLunchbox(!isLunchbox)}
-                >
-                  <View style={styles.flagOptionContent}>
-                    <Text style={[
-                      styles.flagOptionTitle,
-                      isLunchbox && styles.selectedFlagText
-                    ]}>
-                      Lunchbox
-                    </Text>
-                    <Text style={[
-                      styles.flagOptionDescription,
-                      isLunchbox && styles.selectedFlagDescription
-                    ]}>
-                      This meal is suitable for packing in a lunchbox
-                    </Text>
-                  </View>
-                  <View style={[
-                    styles.flagCheckbox,
-                    isLunchbox && styles.selectedCheckbox
-                  ]}>
-                    {isLunchbox && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Recipe Suggestions */}
-            {showSuggestions && (
-              <View style={styles.suggestionsContainer}>
-                <Text style={styles.suggestionsTitle}>Recipe Suggestions</Text>
-                {filteredRecipes.map((recipe) => (
-                  <TouchableOpacity
-                    key={recipe.id}
-                    style={styles.suggestionItem}
-                    onPress={() => handleRecipeSelect(recipe)}
-                  >
-                    <Image
-                      source={{ uri: recipe.imageUrl }}
-                      style={styles.suggestionImage}
-                    />
-                    <View style={styles.suggestionInfo}>
-                      <Text style={styles.suggestionTitle}>{recipe.title}</Text>
-                      <Text style={styles.suggestionDetails}>
-                        {recipe.cookingTime} min • {recipe.calories} cal
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {/* Selected Recipe Preview */}
-            {showSelectedPreview && (
-              <View style={styles.previewContainer}>
-                <Text style={styles.previewTitle}>Selected Recipe</Text>
-                <View style={styles.previewCard}>
-                  <Image
-                    source={{ uri: selectedRecipe.imageUrl }}
-                    style={styles.previewImage}
-                  />
-                  <View style={styles.previewInfo}>
-                    <Text style={styles.previewRecipeTitle}>{selectedRecipe.title}</Text>
-                    <Text style={styles.previewRecipeDetails}>
-                      {selectedRecipe.cookingTime} min • {selectedRecipe.calories} cal
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Custom Meal Preview */}
-            {showCustomPreview && (
-              <View style={styles.previewContainer}>
-                <Text style={styles.previewTitle}>Custom Meal</Text>
-                <View style={styles.previewCard}>
-                  <Image
-                    source={{ uri: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg' }}
-                    style={styles.previewImage}
-                  />
-                  <View style={styles.previewInfo}>
-                    <Text style={styles.previewRecipeTitle}>{customTitle}</Text>
-                    <Text style={styles.previewRecipeDetails}>Custom meal</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* No results message */}
-            {searchQuery.length > 0 && filteredRecipes.length === 0 && !showCustomPreview && (
-              <View style={styles.noResultsContainer}>
-                <Text style={styles.noResultsText}>
-                  No recipes found. Keep typing to create a custom meal.
-                </Text>
-              </View>
-            )}
           </ScrollView>
 
           {/* Actions */}
           <View style={styles.modalActions}>
             <Button
-              title="Cancel"
-              onPress={handleCancel}
+              title="Delete"
+              onPress={handleDeleteRecipeFromMeal}
               variant="outline"
-              style={styles.modalButton}
+              style={[styles.modalButton, styles.deleteButton]}
+              textStyle={styles.deleteButtonText}
             />
             <Button
               title="Save"
@@ -431,13 +368,6 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 12,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
   chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -451,6 +381,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginBottom: 16,
   },
   searchInput: {
     flex: 1,
@@ -459,71 +390,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#111827',
   },
-  flagsContainer: {
-    gap: 12,
-  },
-  flagOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  selectedFlagOption: {
-    borderColor: '#F97966',
-    backgroundColor: '#FEF3F2',
-  },
-  flagOptionContent: {
-    flex: 1,
-  },
-  flagOptionTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
-    marginBottom: 4,
-  },
-  selectedFlagText: {
-    color: '#F97966',
-  },
-  flagOptionDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  selectedFlagDescription: {
-    color: '#DC2626',
-  },
-  flagCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-  selectedCheckbox: {
-    borderColor: '#F97966',
-    backgroundColor: '#F97966',
-  },
-  checkmark: {
-    fontSize: 14,
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-  },
   suggestionsContainer: {
-    marginBottom: 20,
-  },
-  suggestionsTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -553,15 +421,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
-  previewContainer: {
-    marginBottom: 20,
-  },
-  previewTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
-    marginBottom: 12,
-  },
   previewCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -570,6 +429,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#F97966',
+    marginBottom: 16,
   },
   previewImage: {
     width: 60,
@@ -607,5 +467,11 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+  },
+  deleteButton: {
+    borderColor: '#EF4444',
+  },
+  deleteButtonText: {
+    color: '#EF4444',
   },
 });
