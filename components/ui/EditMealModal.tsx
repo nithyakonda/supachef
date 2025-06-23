@@ -179,7 +179,7 @@ export default function EditMealModal({
   };
 
   const showSuggestions = searchQuery.length > 0 && !selectedRecipe && filteredRecipes.length > 0;
-  const showCustomPreview = searchQuery.length > 0 && !selectedRecipe && customTitle.trim().length > 0;
+  const showCustomPreview = searchQuery.length > 0 && !selectedRecipe && customTitle.trim().length > 0 && !isPlaceholderMeal;
 
   return (
     <Modal
@@ -217,8 +217,8 @@ export default function EditMealModal({
                 />
               </View>
 
-              {/* Recipe Suggestions */}
-              {showSuggestions && (
+              {/* Recipe Suggestions - Only show for non-placeholder meals */}
+              {showSuggestions && !isPlaceholderMeal && (
                 <View style={styles.suggestionsContainer}>
                   {filteredRecipes.map((recipe) => (
                     <TouchableOpacity
@@ -241,7 +241,7 @@ export default function EditMealModal({
                 </View>
               )}
 
-              {/* Custom Meal Preview */}
+              {/* Custom Meal Preview - Only show for non-placeholder meals */}
               {showCustomPreview && (
                 <View style={styles.previewCard}>
                   <Image
@@ -255,8 +255,8 @@ export default function EditMealModal({
                 </View>
               )}
 
-              {/* No results message */}
-              {searchQuery.length > 0 && filteredRecipes.length === 0 && !showCustomPreview && (
+              {/* No results message - Only show for non-placeholder meals */}
+              {searchQuery.length > 0 && filteredRecipes.length === 0 && !showCustomPreview && !isPlaceholderMeal && (
                 <View style={styles.noResultsContainer}>
                   <Text style={styles.noResultsText}>
                     No recipes found. Keep typing to create a custom meal.
