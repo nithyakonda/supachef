@@ -1,4 +1,4 @@
--- supabase/migrations/[timestamp]_update_meal_entries_for_recipe_data.sql
+-- supabase/migrations/20250622214001_update_meal_entries_for_recipe_data.sql
 
 -- Step 1: Drop existing flag columns from meal_entries
 ALTER TABLE meal_entries DROP COLUMN IF EXISTS leftover;
