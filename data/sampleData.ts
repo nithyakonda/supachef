@@ -257,8 +257,8 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               title: sampleRecipes[6].title,
               imageUrl: sampleRecipes[6].imageUrl,
               leftover: true, // Leftover
-              lunchbox: false,
-              aiSuggested: false,
+              lunchbox: true,
+              aiSuggested: true,
               isPlaceholder: false,
             }],
             time: '9:00 AM',
