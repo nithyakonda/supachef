@@ -14,7 +14,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EditMealModal from '../../components/ui/EditMealModal';
 import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
-import { Meal, MealPlan } from '../../types';
+import { Meal, MealPlan, MealRecipeData } from '../../types';
 
 const { width } = Dimensions.get('window');
 
@@ -69,12 +69,12 @@ export default function HomeScreen() {
     setShowEditMealModal(true);
   };
 
-  const handleSaveEditedMeal = (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => {
+  const handleSaveEditedMeal = (updatedMealRecipes: MealRecipeData[], newDayIndex?: number, newMealType?: string) => {
     if (!currentMealEditInfo) return;
 
     const { dayIndex: originalDayIndex, mealIndex: originalMealIndex } = currentMealEditInfo;
     const targetDayIndex = newDayIndex !== undefined ? newDayIndex : originalDayIndex;
-    const targetMealType = newMealType || updatedMeal.type;
+    const targetMealType = newMealType || currentMealEditInfo.meal.type;
 
     setWeeklyMealPlans(prevPlans => {
       const newPlans = [...prevPlans];
@@ -85,17 +85,18 @@ export default function HomeScreen() {
         meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
       };
 
-      // Update meal with new type if changed
-      const mealToAdd = {
-        ...updatedMeal,
+      // Create updated meal with new recipe data
+      const updatedMeal: Meal = {
+        ...currentMealEditInfo.meal,
         type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+        mealRecipes: updatedMealRecipes,
         id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
       };
 
       // Add meal to target position
       newPlans[targetDayIndex] = {
         ...newPlans[targetDayIndex],
-        meals: [...newPlans[targetDayIndex].meals, mealToAdd]
+        meals: [...newPlans[targetDayIndex].meals, updatedMeal]
       };
 
       return newPlans;
@@ -196,16 +197,16 @@ export default function HomeScreen() {
                             return (
                               <Card key={meal.id} style={styles.mealCard}>
                                 <View style={styles.mealContent}>
-                                  {meal.recipe && (
+                                  {meal.mealRecipes && meal.mealRecipes.length > 0 && (
                                     <View style={styles.recipePreview}>
                                       <Image
-                                        source={{ uri: meal.recipe.imageUrl }}
+                                        source={{ uri: meal.mealRecipes[0].imageUrl }}
                                         style={styles.recipeImage}
                                       />
                                       <View style={styles.recipeTextAndButtons}>
                                         <View style={styles.titleAndEditContainer}>
                                           <Text style={styles.recipeTitle}>
-                                            {meal.recipe.title}
+                                            {meal.mealRecipes[0].title}
                                           </Text>
                                           <TouchableOpacity
                                             style={styles.editTitleButton}

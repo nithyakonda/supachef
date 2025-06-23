@@ -1,4 +1,4 @@
-import { Recipe, MealPlan, Meal } from '@/types';
+import { Recipe, MealPlan, Meal, MealRecipeData } from '@/types';
 
 export const sampleRecipes: Recipe[] = [
   {
@@ -237,28 +237,60 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
           {
             id: `${index}-breakfast-1`,
             type: 'breakfast',
-            recipe: sampleRecipes[5], // Berry Smoothie Bowl
+            mealRecipes: [{
+              recipeId: sampleRecipes[5].id,
+              title: sampleRecipes[5].title,
+              imageUrl: sampleRecipes[5].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '9:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-breakfast-2`,
             type: 'breakfast',
-            recipe: sampleRecipes[6], // Greek Yogurt Parfait
+            mealRecipes: [{
+              recipeId: sampleRecipes[6].id,
+              title: sampleRecipes[6].title,
+              imageUrl: sampleRecipes[6].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '9:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-lunch`,
             type: 'lunch',
-            recipe: sampleRecipes[1], // Mediterranean Quinoa Bowl
+            mealRecipes: [{
+              recipeId: sampleRecipes[1].id,
+              title: sampleRecipes[1].title,
+              imageUrl: sampleRecipes[1].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '1:00 PM',
             isCompleted: false,
           },
           {
             id: `${index}-dinner`,
             type: 'dinner',
-            recipe: sampleRecipes[4], // Spaghetti Carbonara
+            mealRecipes: [{
+              recipeId: sampleRecipes[4].id,
+              title: sampleRecipes[4].title,
+              imageUrl: sampleRecipes[4].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '7:00 PM',
             isCompleted: false,
           }
@@ -269,35 +301,75 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
           {
             id: `${index}-breakfast-1`,
             type: 'breakfast',
-            recipe: sampleRecipes[2], // Avocado Toast
+            mealRecipes: [{
+              recipeId: sampleRecipes[2].id,
+              title: sampleRecipes[2].title,
+              imageUrl: sampleRecipes[2].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '8:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-breakfast-2`,
             type: 'breakfast',
-            recipe: sampleRecipes[7], // Overnight Oats
+            mealRecipes: [{
+              recipeId: sampleRecipes[7].id,
+              title: sampleRecipes[7].title,
+              imageUrl: sampleRecipes[7].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '8:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-breakfast-3`,
             type: 'breakfast',
-            recipe: sampleRecipes[6], // Greek Yogurt Parfait
+            mealRecipes: [{
+              recipeId: sampleRecipes[6].id,
+              title: sampleRecipes[6].title,
+              imageUrl: sampleRecipes[6].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '8:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-lunch`,
             type: 'lunch',
-            recipe: sampleRecipes[3], // Grilled Chicken Caesar
+            mealRecipes: [{
+              recipeId: sampleRecipes[3].id,
+              title: sampleRecipes[3].title,
+              imageUrl: sampleRecipes[3].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '12:30 PM',
             isCompleted: false,
           },
           {
             id: `${index}-dinner`,
             type: 'dinner',
-            recipe: sampleRecipes[0], // Butternut Soup
+            mealRecipes: [{
+              recipeId: sampleRecipes[0].id,
+              title: sampleRecipes[0].title,
+              imageUrl: sampleRecipes[0].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '7:00 PM',
             isCompleted: false,
           }
@@ -308,21 +380,45 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
           {
             id: `${index}-breakfast`,
             type: 'breakfast',
-            recipe: sampleRecipes[5], // Berry Smoothie Bowl
+            mealRecipes: [{
+              recipeId: sampleRecipes[5].id,
+              title: sampleRecipes[5].title,
+              imageUrl: sampleRecipes[5].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '8:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-lunch-1`,
             type: 'lunch',
-            recipe: sampleRecipes[1], // Mediterranean Quinoa Bowl
+            mealRecipes: [{
+              recipeId: sampleRecipes[1].id,
+              title: sampleRecipes[1].title,
+              imageUrl: sampleRecipes[1].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '12:30 PM',
             isCompleted: false,
           },
           {
             id: `${index}-lunch-2`,
             type: 'lunch',
-            recipe: sampleRecipes[3], // Grilled Chicken Caesar
+            mealRecipes: [{
+              recipeId: sampleRecipes[3].id,
+              title: sampleRecipes[3].title,
+              imageUrl: sampleRecipes[3].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '12:30 PM',
             isCompleted: false,
           }
@@ -333,21 +429,45 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
           {
             id: `${index}-breakfast`,
             type: 'breakfast',
-            recipe: sampleRecipes[2], // Avocado Toast
+            mealRecipes: [{
+              recipeId: sampleRecipes[2].id,
+              title: sampleRecipes[2].title,
+              imageUrl: sampleRecipes[2].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '8:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-lunch`,
             type: 'lunch',
-            recipe: sampleRecipes[3], // Grilled Chicken Caesar
+            mealRecipes: [{
+              recipeId: sampleRecipes[3].id,
+              title: sampleRecipes[3].title,
+              imageUrl: sampleRecipes[3].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '12:30 PM',
             isCompleted: false,
           },
           {
             id: `${index}-dinner`,
             type: 'dinner',
-            recipe: sampleRecipes[4], // Spaghetti Carbonara
+            mealRecipes: [{
+              recipeId: sampleRecipes[4].id,
+              title: sampleRecipes[4].title,
+              imageUrl: sampleRecipes[4].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '7:00 PM',
             isCompleted: false,
           }
@@ -358,21 +478,45 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
           {
             id: `${index}-breakfast`,
             type: 'breakfast',
-            recipe: sampleRecipes[5], // Berry Smoothie Bowl
+            mealRecipes: [{
+              recipeId: sampleRecipes[5].id,
+              title: sampleRecipes[5].title,
+              imageUrl: sampleRecipes[5].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '8:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-dinner-1`,
             type: 'dinner',
-            recipe: sampleRecipes[0], // Butternut Soup
+            mealRecipes: [{
+              recipeId: sampleRecipes[0].id,
+              title: sampleRecipes[0].title,
+              imageUrl: sampleRecipes[0].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '7:00 PM',
             isCompleted: false,
           },
           {
             id: `${index}-dinner-2`,
             type: 'dinner',
-            recipe: sampleRecipes[4], // Spaghetti Carbonara
+            mealRecipes: [{
+              recipeId: sampleRecipes[4].id,
+              title: sampleRecipes[4].title,
+              imageUrl: sampleRecipes[4].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '7:00 PM',
             isCompleted: false,
           }
@@ -383,21 +527,45 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
           {
             id: `${index}-breakfast`,
             type: 'breakfast',
-            recipe: sampleRecipes[2], // Avocado Toast
+            mealRecipes: [{
+              recipeId: sampleRecipes[2].id,
+              title: sampleRecipes[2].title,
+              imageUrl: sampleRecipes[2].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '8:00 AM',
             isCompleted: false,
           },
           {
             id: `${index}-lunch`,
             type: 'lunch',
-            recipe: sampleRecipes[1], // Mediterranean Quinoa Bowl
+            mealRecipes: [{
+              recipeId: sampleRecipes[1].id,
+              title: sampleRecipes[1].title,
+              imageUrl: sampleRecipes[1].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '12:30 PM',
             isCompleted: false,
           },
           {
             id: `${index}-dinner`,
             type: 'dinner',
-            recipe: sampleRecipes[4], // Spaghetti Carbonara
+            mealRecipes: [{
+              recipeId: sampleRecipes[4].id,
+              title: sampleRecipes[4].title,
+              imageUrl: sampleRecipes[4].imageUrl,
+              leftover: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: false,
+            }],
             time: '7:00 PM',
             isCompleted: false,
           }
@@ -419,38 +587,6 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
 };
 
 export const sampleWeeklyMealPlans = generateSampleWeeklyMealPlans();
-
-export const sampleMeals: Meal[] = [
-  {
-    id: '1',
-    type: 'breakfast',
-    recipe: sampleRecipes[2],
-    time: '8:00 AM',
-    isCompleted: false,
-  },
-  {
-    id: '2',
-    type: 'lunch',
-    recipe: sampleRecipes[1],
-    time: '12:30 PM',
-    isCompleted: false,
-  },
-  {
-    id: '3',
-    type: 'dinner',
-    recipe: sampleRecipes[0],
-    time: '7:00 PM',
-    isCompleted: false,
-  }
-];
-
-export const sampleMealPlan: MealPlan = {
-  id: '1',
-  userId: 'user1',
-  date: new Date(),
-  meals: sampleMeals,
-  isCompleted: false,
-};
 
 export const cuisineOptions = [
   'Italian', 'Mexican', 'Indian', 'Chinese', 'Thai', 

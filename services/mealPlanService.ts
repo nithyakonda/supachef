@@ -1,5 +1,5 @@
 import { supabase } from '@/utils/supabase';
-import { MealPlan, Meal, Recipe } from '@/types';
+import { MealPlan, Meal, Recipe, MealRecipeData } from '@/types';
 import type { Database } from '@/utils/supabase';
 
 type MealPlanRow = Database['public']['Tables']['meal_plans']['Row'];
@@ -14,40 +14,26 @@ export interface MealPlanWithMeals extends MealPlan {
 // Transform database rows to MealPlan type
 const transformMealPlanFromDB = (
   planRow: MealPlanRow, 
-  mealRows: (MealEntryRow & { recipes?: any[] })[] = []
+  mealRows: MealEntryRow[] = []
 ): MealPlanWithMeals => {
   const meals: Meal[] = mealRows.map(mealRow => {
-    // Fetch recipes for the recipe IDs
-    const recipes: Recipe[] = (mealRow.recipes || []).map(recipeData => ({
-      id: recipeData.id,
+    // Transform meal_recipes from JSONB array to MealRecipeData array
+    const mealRecipes: MealRecipeData[] = (mealRow.meal_recipes || []).map((recipeData: any) => ({
+      recipeId: recipeData.recipeId,
       title: recipeData.title,
-      description: recipeData.description,
-      imageUrl: recipeData.image_url,
-      cookingTime: recipeData.cooking_time,
-      servings: recipeData.servings,
-      difficulty: recipeData.difficulty,
-      calories: recipeData.calories,
-      ingredients: recipeData.ingredients || [],
-      instructions: recipeData.instructions || [],
-      tags: recipeData.tags || [],
-      source: recipeData.source,
-      rating: recipeData.rating,
-      notes: recipeData.notes,
-      isFavorite: recipeData.is_favorite,
-      createdAt: new Date(recipeData.created_at),
+      imageUrl: recipeData.imageUrl,
+      leftover: recipeData.leftover || false,
+      lunchbox: recipeData.lunchbox || false,
+      aiSuggested: recipeData.aiSuggested || false,
+      isPlaceholder: recipeData.isPlaceholder || false,
     }));
 
     return {
       id: mealRow.id,
       type: mealRow.meal_type,
-      recipeIds: mealRow.recipe_ids || [],
-      recipes: recipes.length > 0 ? recipes : undefined,
+      mealRecipes: mealRecipes.length > 0 ? mealRecipes : undefined,
       time: mealRow.meal_time || undefined,
       isCompleted: mealRow.is_completed,
-      leftover: mealRow.leftover || false,
-      lunchbox: mealRow.lunchbox || false,
-      aiSuggested: mealRow.ai_suggested || false,
-      isPlaceholder: mealRow.is_placeholder || false,
       // Note: suggestedRecipes should be empty here since they're processed by the trigger
       suggestedRecipes: undefined,
     };
@@ -93,7 +79,7 @@ export const mealPlanService = {
       throw new Error('Failed to fetch meal plan');
     }
 
-    // Get meals for this plan with their recipes
+    // Get meals for this plan
     const { data: mealsData, error: mealsError } = await supabase
       .from('meal_entries')
       .select('*')
@@ -104,34 +90,7 @@ export const mealPlanService = {
       throw new Error('Failed to fetch meal entries');
     }
 
-    // Fetch recipes for all recipe IDs in the meals
-    const allRecipeIds = mealsData.flatMap(meal => meal.recipe_ids || []);
-    const uniqueRecipeIds = Array.from(new Set(allRecipeIds));
-
-    let recipesData: any[] = [];
-    if (uniqueRecipeIds.length > 0) {
-      const { data: fetchedRecipes, error: recipesError } = await supabase
-        .from('recipes')
-        .select('*')
-        .in('id', uniqueRecipeIds);
-
-      if (recipesError) {
-        console.error('Error fetching recipes:', recipesError);
-        throw new Error('Failed to fetch recipes');
-      }
-
-      recipesData = fetchedRecipes || [];
-    }
-
-    // Map recipes to meals
-    const mealsWithRecipes = mealsData.map(meal => ({
-      ...meal,
-      recipes: (meal.recipe_ids || []).map(recipeId => 
-        recipesData.find(recipe => recipe.id === recipeId)
-      ).filter(Boolean)
-    }));
-
-    return transformMealPlanFromDB(planData, mealsWithRecipes);
+    return transformMealPlanFromDB(planData, mealsData);
   },
 
   // Get meal plans for a date range
@@ -173,41 +132,14 @@ export const mealPlanService = {
       throw new Error('Failed to fetch meal entries');
     }
 
-    // Fetch all recipes
-    const allRecipeIds = mealsData.flatMap(meal => meal.recipe_ids || []);
-    const uniqueRecipeIds = Array.from(new Set(allRecipeIds));
-
-    let recipesData: any[] = [];
-    if (uniqueRecipeIds.length > 0) {
-      const { data: fetchedRecipes, error: recipesError } = await supabase
-        .from('recipes')
-        .select('*')
-        .in('id', uniqueRecipeIds);
-
-      if (recipesError) {
-        console.error('Error fetching recipes:', recipesError);
-        throw new Error('Failed to fetch recipes');
-      }
-
-      recipesData = fetchedRecipes || [];
-    }
-
-    // Group meals by plan ID and add recipes
+    // Group meals by plan ID
     const mealsByPlan = mealsData.reduce((acc, meal) => {
       if (!acc[meal.meal_plan_id]) {
         acc[meal.meal_plan_id] = [];
       }
-      
-      const mealWithRecipes = {
-        ...meal,
-        recipes: (meal.recipe_ids || []).map(recipeId => 
-          recipesData.find(recipe => recipe.id === recipeId)
-        ).filter(Boolean)
-      };
-      
-      acc[meal.meal_plan_id].push(mealWithRecipes);
+      acc[meal.meal_plan_id].push(meal);
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, MealEntryRow[]>);
 
     return plansData.map(plan => 
       transformMealPlanFromDB(plan, mealsByPlan[plan.id] || [])
@@ -248,14 +180,10 @@ export const mealPlanService = {
     // Create the meals
     const mealInserts: MealEntryInsert[] = meals.map(meal => ({
       meal_plan_id: planData.id,
-      recipe_ids: meal.recipeIds || [],
+      meal_recipes: meal.mealRecipes || [],
       meal_type: meal.type,
       meal_time: meal.time || null,
       is_completed: meal.isCompleted,
-      leftover: meal.leftover || false,
-      lunchbox: meal.lunchbox || false,
-      ai_suggested: meal.aiSuggested || false,
-      is_placeholder: meal.isPlaceholder || false,
       suggested_recipes: meal.suggestedRecipes || [],
     }));
 
@@ -269,34 +197,7 @@ export const mealPlanService = {
       throw new Error('Failed to create meal entries');
     }
 
-    // Fetch recipes for the created meals
-    const allRecipeIds = mealsData.flatMap(meal => meal.recipe_ids || []);
-    const uniqueRecipeIds = Array.from(new Set(allRecipeIds));
-
-    let recipesData: any[] = [];
-    if (uniqueRecipeIds.length > 0) {
-      const { data: fetchedRecipes, error: recipesError } = await supabase
-        .from('recipes')
-        .select('*')
-        .in('id', uniqueRecipeIds);
-
-      if (recipesError) {
-        console.error('Error fetching recipes:', recipesError);
-        throw new Error('Failed to fetch recipes');
-      }
-
-      recipesData = fetchedRecipes || [];
-    }
-
-    // Add recipes to meals
-    const mealsWithRecipes = mealsData.map(meal => ({
-      ...meal,
-      recipes: (meal.recipe_ids || []).map(recipeId => 
-        recipesData.find(recipe => recipe.id === recipeId)
-      ).filter(Boolean)
-    }));
-
-    return transformMealPlanFromDB(planData, mealsWithRecipes);
+    return transformMealPlanFromDB(planData, mealsData);
   },
 
   // Update meal completion status
@@ -312,9 +213,10 @@ export const mealPlanService = {
     }
   },
 
-  // Update meal flags
+  // Update meal flags for a specific recipe within a meal
   updateMealFlags: async (
     mealId: string, 
+    recipeId: string,
     flags: {
       leftover?: boolean;
       lunchbox?: boolean;
@@ -322,19 +224,39 @@ export const mealPlanService = {
       isPlaceholder?: boolean;
     }
   ): Promise<void> => {
-    const updateData: any = {};
-    if (flags.leftover !== undefined) updateData.leftover = flags.leftover;
-    if (flags.lunchbox !== undefined) updateData.lunchbox = flags.lunchbox;
-    if (flags.aiSuggested !== undefined) updateData.ai_suggested = flags.aiSuggested;
-    if (flags.isPlaceholder !== undefined) updateData.is_placeholder = flags.isPlaceholder;
-
-    const { error } = await supabase
+    // First, fetch the current meal entry
+    const { data: mealEntry, error: fetchError } = await supabase
       .from('meal_entries')
-      .update(updateData)
+      .select('meal_recipes')
+      .eq('id', mealId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching meal entry:', fetchError);
+      throw new Error('Failed to fetch meal entry');
+    }
+
+    // Update the specific recipe's flags within the meal_recipes array
+    const updatedMealRecipes = (mealEntry.meal_recipes || []).map((recipeData: any) => {
+      if (recipeData.recipeId === recipeId) {
+        return {
+          ...recipeData,
+          ...Object.fromEntries(
+            Object.entries(flags).filter(([_, value]) => value !== undefined)
+          )
+        };
+      }
+      return recipeData;
+    });
+
+    // Update the meal entry with the modified meal_recipes array
+    const { error: updateError } = await supabase
+      .from('meal_entries')
+      .update({ meal_recipes: updatedMealRecipes })
       .eq('id', mealId);
 
-    if (error) {
-      console.error('Error updating meal flags:', error);
+    if (updateError) {
+      console.error('Error updating meal flags:', updateError);
       throw new Error('Failed to update meal flags');
     }
   },
@@ -344,8 +266,7 @@ export const mealPlanService = {
     const { error } = await supabase
       .from('meal_entries')
       .update({ 
-        suggested_recipes: suggestedRecipes,
-        ai_suggested: true 
+        suggested_recipes: suggestedRecipes
       })
       .eq('id', mealId);
 
@@ -382,7 +303,7 @@ export const mealPlanService = {
     const { data, error } = await supabase
       .from('meal_entries')
       .select(`
-        recipe_ids,
+        meal_recipes,
         meal_plans!inner (
           user_id,
           plan_date
@@ -396,7 +317,10 @@ export const mealPlanService = {
       throw new Error('Failed to fetch recently used recipes');
     }
 
-    const allRecipeIds = data.flatMap(item => item.recipe_ids || []);
+    // Extract recipe IDs from meal_recipes arrays
+    const allRecipeIds = data.flatMap(item => 
+      (item.meal_recipes || []).map((recipe: any) => recipe.recipeId)
+    );
     return Array.from(new Set(allRecipeIds));
   },
 
@@ -430,9 +354,7 @@ export const mealPlanService = {
       .from('meal_entries')
       .select(`
         is_completed,
-        recipe_ids,
-        ai_suggested,
-        is_placeholder,
+        meal_recipes,
         meal_plans!inner (
           user_id
         )
@@ -446,11 +368,21 @@ export const mealPlanService = {
 
     const completedMeals = mealStats.filter(meal => meal.is_completed).length;
     const totalMeals = mealStats.length;
-    const aiSuggestedMeals = mealStats.filter(meal => meal.ai_suggested).length;
-    const placeholderMeals = mealStats.filter(meal => meal.is_placeholder).length;
+
+    // Calculate AI suggested and placeholder meals by checking flags in meal_recipes
+    let aiSuggestedMeals = 0;
+    let placeholderMeals = 0;
+    const allRecipeIds: string[] = [];
+
+    mealStats.forEach(meal => {
+      (meal.meal_recipes || []).forEach((recipe: any) => {
+        allRecipeIds.push(recipe.recipeId);
+        if (recipe.aiSuggested) aiSuggestedMeals++;
+        if (recipe.isPlaceholder) placeholderMeals++;
+      });
+    });
 
     // Get most used recipes
-    const allRecipeIds = mealStats.flatMap(meal => meal.recipe_ids || []);
     const recipeUsage = allRecipeIds.reduce((acc, recipeId) => {
       acc[recipeId] = (acc[recipeId] || 0) + 1;
       return acc;

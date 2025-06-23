@@ -13,7 +13,7 @@ import { X, Search } from 'lucide-react-native';
 import Button from './Button';
 import Chip from './Chip';
 import { sampleRecipes } from '@/data/sampleData';
-import { Meal, Recipe, MealPlan } from '@/types';
+import { Meal, Recipe, MealPlan, MealRecipeData } from '@/types';
 
 interface EditMealModalProps {
   visible: boolean;
@@ -21,7 +21,7 @@ interface EditMealModalProps {
   currentDayIndex: number;
   allWeeklyMealPlans: MealPlan[];
   allMealTypes: string[];
-  onSave: (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => void;
+  onSave: (updatedMealRecipes: MealRecipeData[], newDayIndex?: number, newMealType?: string) => void;
   onClose: () => void;
 }
 
@@ -45,10 +45,20 @@ export default function EditMealModal({
   // Initialize state when modal opens
   useEffect(() => {
     if (visible) {
-      if (meal.recipe) {
-        setSelectedRecipe(meal.recipe);
-        setSearchQuery(meal.recipe.title);
-        setCustomTitle('');
+      if (meal.mealRecipes && meal.mealRecipes.length > 0) {
+        // Find the recipe from sample recipes based on the first meal recipe
+        const firstMealRecipe = meal.mealRecipes[0];
+        const foundRecipe = sampleRecipes.find(recipe => recipe.id === firstMealRecipe.recipeId);
+        
+        if (foundRecipe) {
+          setSelectedRecipe(foundRecipe);
+          setSearchQuery(foundRecipe.title);
+        } else {
+          // If recipe not found in sample recipes, use the title from meal recipe data
+          setSelectedRecipe(null);
+          setSearchQuery(firstMealRecipe.title);
+          setCustomTitle(firstMealRecipe.title);
+        }
       } else {
         setSelectedRecipe(null);
         setSearchQuery('');
@@ -102,48 +112,33 @@ export default function EditMealModal({
   };
 
   const handleSave = () => {
-    let updatedMeal: Meal;
+    let updatedMealRecipes: MealRecipeData[] = [];
 
     if (selectedRecipe) {
       // Use selected recipe from the recipe book
-      updatedMeal = {
-        ...meal,
-        recipe: selectedRecipe,
-        type: selectedMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-      };
+      updatedMealRecipes = [{
+        recipeId: selectedRecipe.id,
+        title: selectedRecipe.title,
+        imageUrl: selectedRecipe.imageUrl,
+        leftover: false,
+        lunchbox: false,
+        aiSuggested: false,
+        isPlaceholder: false,
+      }];
     } else if (customTitle.trim()) {
-      // Create a custom meal with placeholder image
-      const customRecipe: Recipe = {
-        id: `custom-${Date.now()}`,
+      // Create a custom meal with placeholder data
+      updatedMealRecipes = [{
+        recipeId: `custom-${Date.now()}`,
         title: customTitle.trim(),
-        description: 'Custom meal',
         imageUrl: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
-        cookingTime: 30,
-        servings: 1,
-        difficulty: 'Easy',
-        calories: 0,
-        ingredients: [],
-        instructions: [],
-        tags: ['Custom'],
-        isFavorite: false,
-        createdAt: new Date(),
-      };
-
-      updatedMeal = {
-        ...meal,
-        recipe: customRecipe,
-        type: selectedMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-      };
-    } else {
-      // No recipe selected and no custom title
-      updatedMeal = {
-        ...meal,
-        recipe: undefined,
-        type: selectedMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-      };
+        leftover: false,
+        lunchbox: false,
+        aiSuggested: false,
+        isPlaceholder: true, // Mark as placeholder since it's a custom entry
+      }];
     }
 
-    onSave(updatedMeal, selectedDayIndex, selectedMealType);
+    onSave(updatedMealRecipes, selectedDayIndex, selectedMealType);
   };
 
   const handleCancel = () => {

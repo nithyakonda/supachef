@@ -44,6 +44,16 @@ export interface Ingredient {
   unit?: string;
 }
 
+export interface MealRecipeData {
+  recipeId: string;
+  title: string;
+  imageUrl: string;
+  leftover: boolean;
+  lunchbox: boolean;
+  aiSuggested: boolean;
+  isPlaceholder: boolean;
+}
+
 export interface MealPlan {
   id: string;
   userId: string;
@@ -55,14 +65,9 @@ export interface MealPlan {
 export interface Meal {
   id: string;
   type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  recipeIds: string[]; // Array of recipe IDs from the recipes table
-  recipes?: Recipe[]; // Optional, populated when full recipe objects are fetched
+  mealRecipes?: MealRecipeData[];
   time?: string;
   isCompleted: boolean;
-  leftover?: boolean; // Flag for leftover meals
-  lunchbox?: boolean; // Flag for lunchbox meals
-  aiSuggested?: boolean; // Flag if the meal was AI-suggested
-  isPlaceholder?: boolean; // Flag for placeholder meals
   suggestedRecipes?: Recipe[]; // Temporary storage for AI-suggested recipes not yet in recipes table
 }
 
