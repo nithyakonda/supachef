@@ -442,23 +442,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   flagChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#E5E7EB',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
   },
   flagChipText: {
     fontSize: 11,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
   },
   aiSuggestedChip: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#C7D2FE',
+    backgroundColor: '#BFDBFE',
+    borderColor: '#93C5FD',
   },
   aiSuggestedChipText: {
-    color: '#4F46E5',
+    color: '#1D4ED8',
+    fontFamily: 'Inter-SemiBold',
   },
 });
