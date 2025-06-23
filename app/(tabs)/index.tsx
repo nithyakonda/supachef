@@ -9,12 +9,14 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Pencil, Plus, User } from 'lucide-react-native';
+import { Pencil, Plus, User, Sparkles } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import Chip from '../../components/ui/Chip';
 import EditMealModal from '../../components/ui/EditMealModal';
 import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
-import { Meal, MealPlan } from '../../types';
+import { Meal, MealPlan, MealRecipeData } from '../../types';
+import { supabase } from '../../utils/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -31,12 +33,31 @@ export default function HomeScreen() {
     dayIndex: number;
     mealIndex: number;
   } | null>(null);
+  const [userFirstName, setUserFirstName] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const allMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
   const today = new Date();
   const todayIndex = today.getDay();
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.full_name) {
+          const fullName = user.user_metadata.full_name;
+          const firstName = fullName.split(' ')[0];
+          setUserFirstName(firstName);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
 
   // Initial scroll to today's meals
   useEffect(() => {
@@ -69,12 +90,12 @@ export default function HomeScreen() {
     setShowEditMealModal(true);
   };
 
-  const handleSaveEditedMeal = (updatedMeal: Meal, newDayIndex?: number, newMealType?: string) => {
+  const handleSaveEditedMeal = (updatedMealRecipes: MealRecipeData[], newDayIndex?: number, newMealType?: string) => {
     if (!currentMealEditInfo) return;
 
     const { dayIndex: originalDayIndex, mealIndex: originalMealIndex } = currentMealEditInfo;
     const targetDayIndex = newDayIndex !== undefined ? newDayIndex : originalDayIndex;
-    const targetMealType = newMealType || updatedMeal.type;
+    const targetMealType = newMealType || currentMealEditInfo.meal.type;
 
     setWeeklyMealPlans(prevPlans => {
       const newPlans = [...prevPlans];
@@ -85,17 +106,18 @@ export default function HomeScreen() {
         meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
       };
 
-      // Update meal with new type if changed
-      const mealToAdd = {
-        ...updatedMeal,
+      // Create updated meal with new recipe data
+      const updatedMeal: Meal = {
+        ...currentMealEditInfo.meal,
         type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+        mealRecipes: updatedMealRecipes,
         id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
       };
 
       // Add meal to target position
       newPlans[targetDayIndex] = {
         ...newPlans[targetDayIndex],
-        meals: [...newPlans[targetDayIndex].meals, mealToAdd]
+        meals: [...newPlans[targetDayIndex].meals, updatedMeal]
       };
 
       return newPlans;
@@ -121,7 +143,9 @@ export default function HomeScreen() {
             <User size={24} color="#F97966" />
           </TouchableOpacity>
           <View style={styles.greetingContainer}>
-            <Text style={styles.greeting}>Hello, Chef!</Text>
+            <Text style={styles.greeting}>
+              Hello, {userFirstName || 'Chef'}!
+            </Text>
           </View>
           <View style={styles.placeholder} />
         </View>
@@ -196,16 +220,16 @@ export default function HomeScreen() {
                             return (
                               <Card key={meal.id} style={styles.mealCard}>
                                 <View style={styles.mealContent}>
-                                  {meal.recipe && (
+                                  {meal.mealRecipes && meal.mealRecipes.length > 0 && (
                                     <View style={styles.recipePreview}>
                                       <Image
-                                        source={{ uri: meal.recipe.imageUrl }}
+                                        source={{ uri: meal.mealRecipes[0].imageUrl }}
                                         style={styles.recipeImage}
                                       />
                                       <View style={styles.recipeTextAndButtons}>
                                         <View style={styles.titleAndEditContainer}>
                                           <Text style={styles.recipeTitle}>
-                                            {meal.recipe.title}
+                                            {meal.mealRecipes[0].title}
                                           </Text>
                                           <TouchableOpacity
                                             style={styles.editTitleButton}
@@ -214,6 +238,28 @@ export default function HomeScreen() {
                                           >
                                             <Pencil size={16} color="#6B7280" />
                                           </TouchableOpacity>
+                                        </View>
+                                        
+                                        {/* Meal Flags - Anchored to bottom */}
+                                        <View style={styles.mealFlagsContainer}>
+                                          {meal.mealRecipes[0].leftover && (
+                                            <View style={[styles.flagChip, styles.leftoverChip]}>
+                                              <Text style={[styles.flagChipText, styles.leftoverChipText]}>Leftover</Text>
+                                            </View>
+                                          )}
+                                          {meal.mealRecipes[0].lunchbox && (
+                                            <View style={[styles.flagChip, styles.lunchboxChip]}>
+                                              <Text style={[styles.flagChipText, styles.lunchboxChipText]}>Lunchbox</Text>
+                                            </View>
+                                          )}
+                                          {meal.mealRecipes[0].aiSuggested && (
+                                            <View style={[styles.flagChip, styles.aiSuggestedChip]}>
+                                              <View style={styles.aiSuggestedContent}>
+                                                <Sparkles size={10} color="#F97966" />
+                                                <Text style={[styles.flagChipText, styles.aiSuggestedChipText]}>Try This</Text>
+                                              </View>
+                                            </View>
+                                          )}
                                         </View>
                                       </View>
                                     </View>
@@ -382,7 +428,7 @@ const styles = StyleSheet.create({
   },
   recipePreview: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   recipeImage: {
     width: 80,
@@ -392,6 +438,9 @@ const styles = StyleSheet.create({
   },
   recipeTextAndButtons: {
     flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    minHeight: 80, // Match the image height to ensure proper spacing
   },
   titleAndEditContainer: {
     flexDirection: 'row',
@@ -413,5 +462,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
+  },
+  mealFlagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignSelf: 'flex-start', // Anchor to the left
+  },
+  flagChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  flagChipText: {
+    fontSize: 11,
+    fontFamily: 'Inter-SemiBold',
+    color: '#6B7280',
+  },
+  leftoverChip: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FEDD9F',
+  },
+  leftoverChipText: {
+    color: '#D97706',
+  },
+  lunchboxChip: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#CBC87D',
+  },
+  lunchboxChipText: {
+    color: '#65A30D',
+  },
+  aiSuggestedChip: {
+    backgroundColor: '#FEF3F2',
+    borderColor: '#F97966',
+  },
+  aiSuggestedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  aiSuggestedChipText: {
+    color: '#F97966',
+    fontFamily: 'Inter-SemiBold',
   },
 });
