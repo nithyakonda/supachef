@@ -337,7 +337,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               imageUrl: sampleRecipes[6].imageUrl,
               leftover: false,
               lunchbox: false,
-              aiSuggested: true, // AI suggested
+              aiSuggested: false,
               isPlaceholder: false,
             }],
             time: '8:00 AM',
@@ -351,7 +351,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               title: sampleRecipes[3].title,
               imageUrl: sampleRecipes[3].imageUrl,
               leftover: false,
-              lunchbox: true, // Lunchbox
+              lunchbox: false,
               aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
@@ -384,7 +384,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[5].id,
               title: sampleRecipes[5].title,
               imageUrl: sampleRecipes[5].imageUrl,
-              leftover: true, // Leftover
+              leftover: false,
               lunchbox: false,
               aiSuggested: false,
               isPlaceholder: false,
@@ -396,13 +396,13 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
             id: `${index}-lunch-1`,
             type: 'lunch',
             mealRecipes: [{
-              recipeId: sampleRecipes[1].id,
-              title: sampleRecipes[1].title,
-              imageUrl: sampleRecipes[1].imageUrl,
+              recipeId: "placeholder-lunch-1",
+              title: "Your Recipe Here",
+              imageUrl: "https://supabase.storage.link/placeholder.jpg",
               leftover: false,
-              lunchbox: true, // Lunchbox
-              aiSuggested: true, // AI suggested
-              isPlaceholder: false,
+              lunchbox: false,
+              aiSuggested: false,
+              isPlaceholder: true,
             }],
             time: '12:30 PM',
             isCompleted: false,
@@ -414,9 +414,9 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[3].id,
               title: sampleRecipes[3].title,
               imageUrl: sampleRecipes[3].imageUrl,
-              leftover: false,
-              lunchbox: false,
-              aiSuggested: false,
+              leftover: true, // Leftover
+              lunchbox: true, // Lunchbox
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '12:30 PM',
@@ -435,7 +435,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               imageUrl: sampleRecipes[2].imageUrl,
               leftover: false,
               lunchbox: false,
-              aiSuggested: true, // AI suggested
+              aiSuggested: false,
               isPlaceholder: false,
             }],
             time: '8:00 AM',
@@ -448,9 +448,9 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[3].id,
               title: sampleRecipes[3].title,
               imageUrl: sampleRecipes[3].imageUrl,
-              leftover: true, // Leftover
+              leftover: false,
               lunchbox: true, // Lunchbox
-              aiSuggested: false,
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '12:30 PM',
@@ -482,7 +482,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[5].id,
               title: sampleRecipes[5].title,
               imageUrl: sampleRecipes[5].imageUrl,
-              leftover: false,
+              leftover: true, // Leftover
               lunchbox: false,
               aiSuggested: false,
               isPlaceholder: false,
@@ -547,7 +547,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               title: sampleRecipes[1].title,
               imageUrl: sampleRecipes[1].imageUrl,
               leftover: false,
-              lunchbox: false,
+              lunchbox: true, // Lunchbox
               aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
