@@ -39,6 +39,8 @@ export default function EditMealModal({
   const [customTitle, setCustomTitle] = useState('');
   const [selectedDayIndex, setSelectedDayIndex] = useState(currentDayIndex);
   const [selectedMealType, setSelectedMealType] = useState(meal.type);
+  const [isLeftover, setIsLeftover] = useState(false);
+  const [isLunchbox, setIsLunchbox] = useState(false);
 
   const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -59,10 +61,16 @@ export default function EditMealModal({
           setSearchQuery(firstMealRecipe.title);
           setCustomTitle(firstMealRecipe.title);
         }
+        
+        // Set meal flags from the first meal recipe
+        setIsLeftover(firstMealRecipe.leftover || false);
+        setIsLunchbox(firstMealRecipe.lunchbox || false);
       } else {
         setSelectedRecipe(null);
         setSearchQuery('');
         setCustomTitle('');
+        setIsLeftover(false);
+        setIsLunchbox(false);
       }
       setSelectedDayIndex(currentDayIndex);
       setSelectedMealType(meal.type);
@@ -120,8 +128,8 @@ export default function EditMealModal({
         recipeId: selectedRecipe.id,
         title: selectedRecipe.title,
         imageUrl: selectedRecipe.imageUrl,
-        leftover: false,
-        lunchbox: false,
+        leftover: isLeftover,
+        lunchbox: isLunchbox,
         aiSuggested: false,
         isPlaceholder: false,
       }];
@@ -131,8 +139,8 @@ export default function EditMealModal({
         recipeId: `custom-${Date.now()}`,
         title: customTitle.trim(),
         imageUrl: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
-        leftover: false,
-        lunchbox: false,
+        leftover: isLeftover,
+        lunchbox: isLunchbox,
         aiSuggested: false,
         isPlaceholder: true, // Mark as placeholder since it's a custom entry
       }];
@@ -147,6 +155,8 @@ export default function EditMealModal({
     setCustomTitle('');
     setSelectedDayIndex(currentDayIndex);
     setSelectedMealType(meal.type);
+    setIsLeftover(false);
+    setIsLunchbox(false);
     onClose();
   };
 
@@ -216,6 +226,71 @@ export default function EditMealModal({
                   onChangeText={handleSearchChange}
                   placeholderTextColor="#9CA3AF"
                 />
+              </View>
+            </View>
+
+            {/* Meal Flags Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Meal Options</Text>
+              <Text style={styles.sectionSubtitle}>Select any options that apply to this meal</Text>
+              <View style={styles.flagsContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.flagOption,
+                    isLeftover && styles.selectedFlagOption
+                  ]}
+                  onPress={() => setIsLeftover(!isLeftover)}
+                >
+                  <View style={styles.flagOptionContent}>
+                    <Text style={[
+                      styles.flagOptionTitle,
+                      isLeftover && styles.selectedFlagText
+                    ]}>
+                      Leftover
+                    </Text>
+                    <Text style={[
+                      styles.flagOptionDescription,
+                      isLeftover && styles.selectedFlagDescription
+                    ]}>
+                      This meal uses leftovers from a previous meal
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.flagCheckbox,
+                    isLeftover && styles.selectedCheckbox
+                  ]}>
+                    {isLeftover && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.flagOption,
+                    isLunchbox && styles.selectedFlagOption
+                  ]}
+                  onPress={() => setIsLunchbox(!isLunchbox)}
+                >
+                  <View style={styles.flagOptionContent}>
+                    <Text style={[
+                      styles.flagOptionTitle,
+                      isLunchbox && styles.selectedFlagText
+                    ]}>
+                      Lunchbox
+                    </Text>
+                    <Text style={[
+                      styles.flagOptionDescription,
+                      isLunchbox && styles.selectedFlagDescription
+                    ]}>
+                      This meal is suitable for packing in a lunchbox
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.flagCheckbox,
+                    isLunchbox && styles.selectedCheckbox
+                  ]}>
+                    {isLunchbox && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -356,6 +431,13 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 12,
   },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
   chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -376,6 +458,63 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#111827',
+  },
+  flagsContainer: {
+    gap: 12,
+  },
+  flagOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  selectedFlagOption: {
+    borderColor: '#F97966',
+    backgroundColor: '#FEF3F2',
+  },
+  flagOptionContent: {
+    flex: 1,
+  },
+  flagOptionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  selectedFlagText: {
+    color: '#F97966',
+  },
+  flagOptionDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  selectedFlagDescription: {
+    color: '#DC2626',
+  },
+  flagCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  selectedCheckbox: {
+    borderColor: '#F97966',
+    backgroundColor: '#F97966',
+  },
+  checkmark: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
   },
   suggestionsContainer: {
     marginBottom: 20,
