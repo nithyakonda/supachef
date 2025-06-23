@@ -44,6 +44,9 @@ export default function EditMealModal({
 
   const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+  // Check if the current meal is a placeholder meal
+  const isPlaceholderMeal = meal.mealRecipes && meal.mealRecipes.length > 0 && meal.mealRecipes[0].isPlaceholder;
+
   // Initialize state when modal opens
   useEffect(() => {
     if (visible) {
@@ -146,13 +149,22 @@ export default function EditMealModal({
       }];
     }
 
-    onSave(updatedMealRecipes, selectedDayIndex, selectedMealType);
+    // For placeholder meals, don't allow moving to different day/meal type
+    if (isPlaceholderMeal) {
+      onSave(updatedMealRecipes, currentDayIndex, meal.type);
+    } else {
+      onSave(updatedMealRecipes, selectedDayIndex, selectedMealType);
+    }
   };
 
   const handleDeleteRecipeFromMeal = () => {
     // Remove the current recipe from the meal by passing an empty array
     // This will signal to the parent component to remove this meal entry
-    onSave([], selectedDayIndex, selectedMealType);
+    if (isPlaceholderMeal) {
+      onSave([], currentDayIndex, meal.type);
+    } else {
+      onSave([], selectedDayIndex, selectedMealType);
+    }
   };
 
   const handleCancel = () => {
@@ -253,35 +265,39 @@ export default function EditMealModal({
               )}
             </View>
 
-            {/* 2. Move to Day Section */}
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Move to Day</Text>
-              <View style={styles.chipsContainer}>
-                {availableDays.map((day) => (
-                  <Chip
-                    key={day.index}
-                    label={day.isCurrent ? `${day.name} (Today)` : day.name}
-                    selected={selectedDayIndex === day.index}
-                    onPress={() => handleDaySelect(day.index)}
-                  />
-                ))}
+            {/* 2. Move to Day Section - Hidden for placeholder meals */}
+            {!isPlaceholderMeal && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionTitle}>Move to Day</Text>
+                <View style={styles.chipsContainer}>
+                  {availableDays.map((day) => (
+                    <Chip
+                      key={day.index}
+                      label={day.isCurrent ? `${day.name} (Today)` : day.name}
+                      selected={selectedDayIndex === day.index}
+                      onPress={() => handleDaySelect(day.index)}
+                    />
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
 
-            {/* 3. Move to Meal Section */}
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Move to Meal</Text>
-              <View style={styles.chipsContainer}>
-                {allMealTypes.map((mealType) => (
-                  <Chip
-                    key={mealType}
-                    label={mealType.charAt(0).toUpperCase() + mealType.slice(1)}
-                    selected={selectedMealType === mealType}
-                    onPress={() => handleMealTypeSelect(mealType)}
-                  />
-                ))}
+            {/* 3. Move to Meal Section - Hidden for placeholder meals */}
+            {!isPlaceholderMeal && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionTitle}>Move to Meal</Text>
+                <View style={styles.chipsContainer}>
+                  {allMealTypes.map((mealType) => (
+                    <Chip
+                      key={mealType}
+                      label={mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+                      selected={selectedMealType === mealType}
+                      onPress={() => handleMealTypeSelect(mealType)}
+                    />
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
 
             {/* 4. Meal Options Section */}
             <View style={styles.sectionContainer}>
