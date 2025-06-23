@@ -16,6 +16,7 @@ import Chip from '../../components/ui/Chip';
 import EditMealModal from '../../components/ui/EditMealModal';
 import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
 import { Meal, MealPlan, MealRecipeData } from '../../types';
+import { supabase } from '../../utils/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -32,12 +33,31 @@ export default function HomeScreen() {
     dayIndex: number;
     mealIndex: number;
   } | null>(null);
+  const [userFirstName, setUserFirstName] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const allMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
   const today = new Date();
   const todayIndex = today.getDay();
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.full_name) {
+          const fullName = user.user_metadata.full_name;
+          const firstName = fullName.split(' ')[0];
+          setUserFirstName(firstName);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
 
   // Initial scroll to today's meals
   useEffect(() => {
@@ -123,7 +143,9 @@ export default function HomeScreen() {
             <User size={24} color="#F97966" />
           </TouchableOpacity>
           <View style={styles.greetingContainer}>
-            <Text style={styles.greeting}>Hello, Chef!</Text>
+            <Text style={styles.greeting}>
+              Hello, {userFirstName || 'Chef'}!
+            </Text>
           </View>
           <View style={styles.placeholder} />
         </View>

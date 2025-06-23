@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
   Utensils
 } from 'lucide-react-native';
 import Card from '@/components/ui/Card';
+import { supabase } from '@/utils/supabase';
 
 interface SettingsItem {
   id: string;
@@ -29,6 +30,29 @@ interface SettingsItem {
 }
 
 export default function SettingsScreen() {
+  const [userFullName, setUserFullName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserEmail(user.email || '');
+          setUserFullName(user.user_metadata?.full_name || '');
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
   const settingsItems: SettingsItem[] = [
     {
       id: 'profile',
@@ -67,6 +91,20 @@ export default function SettingsScreen() {
     },
   ];
 
+  const getDisplayName = () => {
+    if (userFullName) {
+      return userFullName;
+    }
+    return 'Welcome, Chef!';
+  };
+
+  const getDisplayEmail = () => {
+    if (userEmail) {
+      return userEmail;
+    }
+    return 'Complete your profile setup';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -89,8 +127,8 @@ export default function SettingsScreen() {
               </View>
               
               <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>Welcome, Chef!</Text>
-                <Text style={styles.profileEmail}>Complete your profile setup</Text>
+                <Text style={styles.profileName}>{getDisplayName()}</Text>
+                <Text style={styles.profileEmail}>{getDisplayEmail()}</Text>
               </View>
             </View>
           </Card>
