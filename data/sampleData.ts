@@ -241,8 +241,8 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[5].id,
               title: sampleRecipes[5].title,
               imageUrl: sampleRecipes[5].imageUrl,
-              leftover: false,
-              lunchbox: false,
+              leftover: true,
+              lunchbox: true,
               aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
