@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Pencil, Plus, User } from 'lucide-react-native';
+import { Pencil, Plus, User, Sparkles } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Chip from '../../components/ui/Chip';
@@ -232,7 +232,10 @@ export default function HomeScreen() {
                                           )}
                                           {meal.mealRecipes[0].aiSuggested && (
                                             <View style={[styles.flagChip, styles.aiSuggestedChip]}>
-                                              <Text style={[styles.flagChipText, styles.aiSuggestedChipText]}>AI Suggested</Text>
+                                              <View style={styles.aiSuggestedContent}>
+                                                <Sparkles size={10} color="#F97966" />
+                                                <Text style={[styles.flagChipText, styles.aiSuggestedChipText]}>Try This</Text>
+                                              </View>
                                             </View>
                                           )}
                                         </View>
@@ -443,23 +446,28 @@ const styles = StyleSheet.create({
   },
   flagChip: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#E5E7EB',
   },
   flagChipText: {
     fontSize: 11,
     fontFamily: 'Inter-SemiBold',
-    color: '#374151',
+    color: '#6B7280',
   },
   aiSuggestedChip: {
-    backgroundColor: '#BFDBFE',
-    borderColor: '#93C5FD',
+    backgroundColor: '#FEF3F2',
+    borderColor: '#F97966',
+  },
+  aiSuggestedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   aiSuggestedChipText: {
-    color: '#1D4ED8',
+    color: '#F97966',
     fontFamily: 'Inter-SemiBold',
   },
 });
