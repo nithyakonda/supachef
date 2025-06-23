@@ -243,7 +243,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               imageUrl: sampleRecipes[5].imageUrl,
               leftover: false,
               lunchbox: false,
-              aiSuggested: false,
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '9:00 AM',
@@ -256,7 +256,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[6].id,
               title: sampleRecipes[6].title,
               imageUrl: sampleRecipes[6].imageUrl,
-              leftover: false,
+              leftover: true, // Leftover
               lunchbox: false,
               aiSuggested: false,
               isPlaceholder: false,
@@ -272,7 +272,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               title: sampleRecipes[1].title,
               imageUrl: sampleRecipes[1].imageUrl,
               leftover: false,
-              lunchbox: false,
+              lunchbox: true, // Lunchbox
               aiSuggested: false,
               isPlaceholder: false,
             }],
@@ -320,8 +320,8 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[7].id,
               title: sampleRecipes[7].title,
               imageUrl: sampleRecipes[7].imageUrl,
-              leftover: false,
-              lunchbox: false,
+              leftover: true, // Leftover
+              lunchbox: true, // Lunchbox
               aiSuggested: false,
               isPlaceholder: false,
             }],
@@ -337,7 +337,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               imageUrl: sampleRecipes[6].imageUrl,
               leftover: false,
               lunchbox: false,
-              aiSuggested: false,
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '8:00 AM',
@@ -351,8 +351,8 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               title: sampleRecipes[3].title,
               imageUrl: sampleRecipes[3].imageUrl,
               leftover: false,
-              lunchbox: false,
-              aiSuggested: false,
+              lunchbox: true, // Lunchbox
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '12:30 PM',
@@ -384,7 +384,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[5].id,
               title: sampleRecipes[5].title,
               imageUrl: sampleRecipes[5].imageUrl,
-              leftover: false,
+              leftover: true, // Leftover
               lunchbox: false,
               aiSuggested: false,
               isPlaceholder: false,
@@ -400,8 +400,8 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               title: sampleRecipes[1].title,
               imageUrl: sampleRecipes[1].imageUrl,
               leftover: false,
-              lunchbox: false,
-              aiSuggested: false,
+              lunchbox: true, // Lunchbox
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '12:30 PM',
@@ -435,7 +435,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               imageUrl: sampleRecipes[2].imageUrl,
               leftover: false,
               lunchbox: false,
-              aiSuggested: false,
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '8:00 AM',
@@ -448,8 +448,8 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[3].id,
               title: sampleRecipes[3].title,
               imageUrl: sampleRecipes[3].imageUrl,
-              leftover: false,
-              lunchbox: false,
+              leftover: true, // Leftover
+              lunchbox: true, // Lunchbox
               aiSuggested: false,
               isPlaceholder: false,
             }],
@@ -497,9 +497,9 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[0].id,
               title: sampleRecipes[0].title,
               imageUrl: sampleRecipes[0].imageUrl,
-              leftover: false,
+              leftover: true, // Leftover
               lunchbox: false,
-              aiSuggested: false,
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '7:00 PM',
@@ -532,7 +532,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               title: sampleRecipes[2].title,
               imageUrl: sampleRecipes[2].imageUrl,
               leftover: false,
-              lunchbox: false,
+              lunchbox: true, // Lunchbox
               aiSuggested: false,
               isPlaceholder: false,
             }],
@@ -548,7 +548,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               imageUrl: sampleRecipes[1].imageUrl,
               leftover: false,
               lunchbox: false,
-              aiSuggested: false,
+              aiSuggested: true, // AI suggested
               isPlaceholder: false,
             }],
             time: '12:30 PM',
@@ -561,7 +561,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[4].id,
               title: sampleRecipes[4].title,
               imageUrl: sampleRecipes[4].imageUrl,
-              leftover: false,
+              leftover: true, // Leftover
               lunchbox: false,
               aiSuggested: false,
               isPlaceholder: false,
