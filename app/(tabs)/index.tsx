@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pencil, Plus, User } from 'lucide-react-native';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import Chip from '../../components/ui/Chip';
 import EditMealModal from '../../components/ui/EditMealModal';
 import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
 import { Meal, MealPlan, MealRecipeData } from '../../types';
@@ -216,6 +217,25 @@ export default function HomeScreen() {
                                             <Pencil size={16} color="#6B7280" />
                                           </TouchableOpacity>
                                         </View>
+                                        
+                                        {/* Meal Flags */}
+                                        <View style={styles.mealFlagsContainer}>
+                                          {meal.mealRecipes[0].leftover && (
+                                            <View style={styles.flagChip}>
+                                              <Text style={styles.flagChipText}>Leftover</Text>
+                                            </View>
+                                          )}
+                                          {meal.mealRecipes[0].lunchbox && (
+                                            <View style={styles.flagChip}>
+                                              <Text style={styles.flagChipText}>Lunchbox</Text>
+                                            </View>
+                                          )}
+                                          {meal.mealRecipes[0].aiSuggested && (
+                                            <View style={[styles.flagChip, styles.aiSuggestedChip]}>
+                                              <Text style={[styles.flagChipText, styles.aiSuggestedChipText]}>AI Suggested</Text>
+                                            </View>
+                                          )}
+                                        </View>
                                       </View>
                                     </View>
                                   )}
@@ -383,7 +403,7 @@ const styles = StyleSheet.create({
   },
   recipePreview: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   recipeImage: {
     width: 80,
@@ -399,6 +419,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     minHeight: 22, // Match the lineHeight of the text
+    marginBottom: 8,
   },
   recipeTitle: {
     fontSize: 16,
@@ -414,5 +435,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
+  },
+  mealFlagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  flagChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  flagChipText: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  aiSuggestedChip: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  aiSuggestedChipText: {
+    color: '#4F46E5',
   },
 });
