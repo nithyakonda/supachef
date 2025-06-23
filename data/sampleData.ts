@@ -384,7 +384,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[5].id,
               title: sampleRecipes[5].title,
               imageUrl: sampleRecipes[5].imageUrl,
-              leftover: false,
+              leftover: true, // Leftover
               lunchbox: false,
               aiSuggested: false,
               isPlaceholder: false,
@@ -398,7 +398,7 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
             mealRecipes: [{
               recipeId: "placeholder-lunch-1",
               title: "Your Recipe Here",
-              imageUrl: "https://supabase.storage.link/placeholder.jpg",
+              imageUrl: "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg",
               leftover: false,
               lunchbox: false,
               aiSuggested: false,
@@ -482,8 +482,8 @@ export const generateSampleWeeklyMealPlans = (): MealPlan[] => {
               recipeId: sampleRecipes[5].id,
               title: sampleRecipes[5].title,
               imageUrl: sampleRecipes[5].imageUrl,
-              leftover: true, // Leftover
-              lunchbox: false,
+              leftover: false,
+              lunchbox: true, // Lunchbox
               aiSuggested: false,
               isPlaceholder: false,
             }],
