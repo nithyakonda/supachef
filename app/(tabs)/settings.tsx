@@ -59,8 +59,6 @@ export default function SettingsScreen() {
   }, []);
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    return
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
