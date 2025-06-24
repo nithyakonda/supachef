@@ -1,6 +1,6 @@
 import { Recipe } from '@/types';
 import { supabaseRecipeService } from './supabaseRecipeService';
-import { clientSideRecipeParser } from './urlParsingService';
+import { realUrlParsingService } from './urlParsingService';
 
 // Simple wrapper around supabaseRecipeService to maintain the same interface
 export const recipeService = {
@@ -65,7 +65,7 @@ export const recipeService = {
     return await supabaseRecipeService.getAllTags();
   },
 
-  // Import recipe from URL using client-side parser
+  // Import recipe from URL using real metadata extraction
   importFromUrl: async (
     url: string, 
     onProgress?: (status: string) => void
@@ -79,8 +79,8 @@ export const recipeService = {
 
     onProgress?.('Starting import...');
     
-    // Use client-side parser
-    const recipeData = await clientSideRecipeParser.parseRecipeFromUrl(url, onProgress);
+    // Use real URL parsing service
+    const recipeData = await realUrlParsingService.parseRecipeFromUrl(url, onProgress);
     
     onProgress?.('Saving recipe...');
     
@@ -123,12 +123,12 @@ export const recipeService = {
 
   // Check if URL is supported
   isSupportedUrl: (url: string): boolean => {
-    return clientSideRecipeParser.isSupportedUrl(url);
+    return realUrlParsingService.isSupportedUrl(url);
   },
 
   // Get supported domains list
   getSupportedDomains: (): string[] => {
-    return clientSideRecipeParser.getSupportedDomains();
+    return realUrlParsingService.getSupportedDomains();
   }
 };
 
