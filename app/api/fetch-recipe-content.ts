@@ -1,7 +1,7 @@
 // API Route: /api/fetch-recipe-content
 // This endpoint safely fetches recipe content from external URLs server-side
 
-import { recipeUrlParser } from ""
+import { recipeUrlParser } from "../../services/urlParsingService"
 
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
