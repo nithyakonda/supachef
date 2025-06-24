@@ -1,7 +1,6 @@
 // API Route: /api/fetch-recipe-content
 // This endpoint safely fetches recipe content from external URLs server-side
 
-import { NextRequest, NextResponse } from 'next/server';
 import { recipeUrlParser } from ""
 
 // Rate limiting configuration
@@ -119,14 +118,14 @@ async function fetchUrlContent(url: string): Promise<string> {
 }
 
 // Main API handler
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     // Get client identifier for rate limiting
-    const clientId = request.ip || request.headers.get('x-forwarded-for') || 'anonymous';
+    const clientId = request.headers.get('x-forwarded-for') || 'anonymous';
     
     // Check rate limiting
     if (!checkRateLimit(clientId)) {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Rate limit exceeded. Please try again later.' },
         { status: 429 }
       );
@@ -137,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     if (!url || typeof url !== 'string') {
-      return NextResponse.json(
+      return Response.json(
         { error: 'URL is required and must be a string' },
         { status: 400 }
       );
@@ -148,7 +147,7 @@ export async function POST(request: NextRequest) {
     try {
       validatedUrl = new URL(url);
     } catch {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Invalid URL format' },
         { status: 400 }
       );
@@ -156,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     // Check if domain is allowed
     if (!isAllowedDomain(url)) {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Domain not supported. Supported sites: YouTube, Pinterest, AllRecipes, Food Network, Taste of Home, BBC Good Food, and other major recipe sites.' },
         { status: 403 }
       );
@@ -164,7 +163,7 @@ export async function POST(request: NextRequest) {
 
     // Ensure HTTPS
     if (validatedUrl.protocol !== 'https:') {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Only HTTPS URLs are supported' },
         { status: 400 }
       );
@@ -174,7 +173,7 @@ export async function POST(request: NextRequest) {
     try {
       const recipeData = await recipeUrlParser.parseRecipeFromUrl(url);
       
-      return NextResponse.json({
+      return Response.json({
         success: true,
         recipe: recipeData
       });
@@ -184,7 +183,7 @@ export async function POST(request: NextRequest) {
       // Try fallback: just fetch content for manual parsing
       try {
         const content = await fetchUrlContent(url);
-        return NextResponse.json({
+        return Response.json({
           success: true,
           content,
           fallback: true,
@@ -192,7 +191,7 @@ export async function POST(request: NextRequest) {
         });
       } catch (fetchError) {
         console.error('Error fetching content:', fetchError);
-        return NextResponse.json(
+        return Response.json(
           { error: 'Failed to fetch or parse recipe from the provided URL' },
           { status: 500 }
         );
@@ -200,7 +199,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('API Error:', error);
-    return NextResponse.json(
+    return Response.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
@@ -209,21 +208,21 @@ export async function POST(request: NextRequest) {
 
 // Handle unsupported methods
 export async function GET() {
-  return NextResponse.json(
+  return Response.json(
     { error: 'Method not allowed. Use POST instead.' },
     { status: 405 }
   );
 }
 
 export async function PUT() {
-  return NextResponse.json(
+  return Response.json(
     { error: 'Method not allowed. Use POST instead.' },
     { status: 405 }
   );
 }
 
 export async function DELETE() {
-  return NextResponse.json(
+  return Response.json(
     { error: 'Method not allowed. Use POST instead.' },
     { status: 405 }
   );
