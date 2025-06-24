@@ -18,6 +18,7 @@ import { router, useFocusEffect } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
+import URLImportModal from '@/components/ui/URLImportModal';
 import { Recipe } from '@/types';
 import { recipeService } from '@/services/recipeService';
 
@@ -32,7 +33,6 @@ export default function RecipesScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [sortBy, setSortBy] = useState<'recent' | 'alphabetical' | 'rating'>('recent');
   const [filterBy, setFilterBy] = useState<'all' | 'favorites'>('all');
-  const [importUrl, setImportUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,21 +168,14 @@ export default function RecipesScreen() {
     );
   };
 
-  const handleImportFromUrl = async () => {
-    if (!importUrl.trim()) {
-      Alert.alert('Error', 'Please enter a valid URL');
-      return;
-    }
-
+  const handleImportFromUrl = async (url: string) => {
     setIsImporting(true);
     try {
-      const importedRecipe = await recipeService.importFromUrl(importUrl);
+      const importedRecipe = await recipeService.importFromUrl(url);
       setRecipes(prev => [importedRecipe, ...prev]);
-      setShowImportModal(false);
-      setImportUrl('');
       Alert.alert('Success', 'Recipe imported successfully!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to import recipe. Please check the URL and try again.');
+      throw new Error('Failed to import recipe. Please check the URL and try again.');
     } finally {
       setIsImporting(false);
     }
@@ -412,54 +405,13 @@ export default function RecipesScreen() {
         )}
       </ScrollView>
 
-      {/* Import from URL Modal */}
-      <Modal
+      {/* URL Import Modal */}
+      <URLImportModal
         visible={showImportModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowImportModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.importModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Import Recipe from URL</Text>
-              <TouchableOpacity onPress={() => setShowImportModal(false)}>
-                <X size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.importDescription}>
-              Paste a URL from Pinterest, food blogs, or recipe websites to automatically import the recipe.
-            </Text>
-
-            <TextInput
-              style={styles.urlInput}
-              value={importUrl}
-              onChangeText={setImportUrl}
-              placeholder="https://example.com/recipe"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setShowImportModal(false)}
-                variant="outline"
-                style={styles.modalButton}
-              />
-              <Button
-                title={isImporting ? "Importing..." : "Import"}
-                onPress={handleImportFromUrl}
-                variant="primary"
-                style={styles.modalButton}
-                disabled={isImporting}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImportFromUrl}
+        isImporting={isImporting}
+      />
 
       {/* Filter Modal */}
       <Modal
@@ -790,13 +742,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  importModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '50%',
-  },
   filterModalContent: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
@@ -814,25 +759,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-  },
-  importDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  urlInput: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
-    marginBottom: 24,
   },
   filterSection: {
     marginBottom: 24,
@@ -870,12 +796,5 @@ const styles = StyleSheet.create({
   },
   applyFiltersButton: {
     width: '100%',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
   },
 });
