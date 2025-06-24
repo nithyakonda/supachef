@@ -11,41 +11,36 @@ import {
   Alert,
   Dimensions,
   FlatList,
-  ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, ChevronRight, Info, ExternalLink } from 'lucide-react-native';
+import { Search, Filter, Heart, Plus, Clock, Users, Star, X, Link, ChevronRight } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import { sampleRecipes } from '@/data/sampleData';
 import { Recipe } from '@/types';
-import { enhancedRecipeService } from '@/services/enhancedRecipeService';
+import { recipeService } from '@/services/recipeService';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 60) / 2;
+const CARD_WIDTH = (width - 60) / 2; // 2 cards per row with margins
 
-export default function EnhancedRecipesScreen() {
+export default function RecipesScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>(sampleRecipes);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>(['1', '3']);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [showSupportedSitesModal, setShowSupportedSitesModal] = useState(false);
   const [sortBy, setSortBy] = useState<'recent' | 'alphabetical' | 'rating'>('recent');
   const [filterBy, setFilterBy] = useState<'all' | 'favorites'>('all');
   const [importUrl, setImportUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState('');
-  const [urlError, setUrlError] = useState('');
 
-  // Load recipes from database
+  // Load recipes from database on component mount and when screen comes into focus
   const loadRecipes = async () => {
     try {
-      const savedRecipes = await enhancedRecipeService.getAllRecipes();
+      const savedRecipes = await recipeService.getAllRecipes();
       if (savedRecipes.length > 0) {
         setRecipes(savedRecipes);
       }
@@ -89,7 +84,7 @@ export default function EnhancedRecipesScreen() {
     }
   });
 
-  // Group recipes for carousels
+  // Group recipes for Netflix-style carousels
   const recentlyAdded = recipes
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 10);
@@ -108,12 +103,11 @@ export default function EnhancedRecipesScreen() {
     
     setFavorites(newFavorites);
     
-    try {
-      await enhancedRecipeService.toggleFavorite(recipeId);
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-      // Revert on error
-      setFavorites(favorites);
+    // Update recipe in database
+    const recipe = recipes.find(r => r.id === recipeId);
+    if (recipe) {
+      const updatedRecipe = { ...recipe, isFavorite: newFavorites.includes(recipeId) };
+      await recipeService.updateRecipe(updatedRecipe);
     }
   };
 
@@ -142,6 +136,10 @@ export default function EnhancedRecipesScreen() {
     router.push('/recipes/add-edit-recipe');
   };
 
+  const handleEditRecipe = (recipe: Recipe) => {
+    router.push(`/recipes/add-edit-recipe?recipeId=${recipe.id}`);
+  };
+
   const handleRecipePress = (recipe: Recipe) => {
     router.push(`/recipes/${recipe.id}`);
   };
@@ -157,7 +155,7 @@ export default function EnhancedRecipesScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await enhancedRecipeService.deleteRecipe(recipeId);
+              await recipeService.deleteRecipe(recipeId);
               setRecipes(prev => prev.filter(r => r.id !== recipeId));
               setFavorites(prev => prev.filter(id => id !== recipeId));
             } catch (error) {
@@ -169,81 +167,25 @@ export default function EnhancedRecipesScreen() {
     );
   };
 
-  const validateUrl = (url: string): boolean => {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.protocol === 'https:' || urlObj.protocol === 'http:';
-    } catch {
-      return false;
-    }
-  };
-
-  const handleUrlChange = (url: string) => {
-    setImportUrl(url);
-    setUrlError('');
-    
-    if (url.trim() && !validateUrl(url)) {
-      setUrlError('Please enter a valid URL');
-    } else if (url.trim() && !enhancedRecipeService.isSupportedUrl(url)) {
-      setUrlError('This website may not be supported. Check supported sites below.');
-    }
-  };
-
   const handleImportFromUrl = async () => {
     if (!importUrl.trim()) {
-      setUrlError('Please enter a URL');
-      return;
-    }
-
-    if (!validateUrl(importUrl)) {
-      setUrlError('Please enter a valid URL');
+      Alert.alert('Error', 'Please enter a valid URL');
       return;
     }
 
     setIsImporting(true);
-    setImportProgress('Starting import...');
-    setUrlError('');
-
     try {
-      const importedRecipe = await enhancedRecipeService.importFromUrl(
-        importUrl,
-        (status) => setImportProgress(status)
-      );
-      
+      const importedRecipe = await recipeService.importFromUrl(importUrl);
+      await recipeService.saveRecipe(importedRecipe);
       setRecipes(prev => [importedRecipe, ...prev]);
       setShowImportModal(false);
       setImportUrl('');
-      setImportProgress('');
-      
-      Alert.alert(
-        'Success!', 
-        'Recipe imported successfully!',
-        [
-          { text: 'View Recipe', onPress: () => handleRecipePress(importedRecipe) },
-          { text: 'OK', style: 'default' }
-        ]
-      );
+      Alert.alert('Success', 'Recipe imported successfully!');
     } catch (error) {
-      console.error('Import error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to import recipe';
-      setUrlError(errorMessage);
-      setImportProgress('');
+      Alert.alert('Error', 'Failed to import recipe. Please check the URL and try again.');
     } finally {
       setIsImporting(false);
     }
-  };
-
-  const handleBatchImport = () => {
-    // Show info about batch import feature
-    Alert.alert(
-      'Batch Import',
-      'Want to import multiple recipes at once? This feature is coming soon!',
-      [{ text: 'OK' }]
-    );
-  };
-
-  const openSupportedSites = () => {
-    setShowSupportedSitesModal(true);
   };
 
   const renderStarRating = (rating: number) => {
@@ -279,11 +221,6 @@ export default function EnhancedRecipesScreen() {
               fill={favorites.includes(recipe.id) ? '#F97966' : 'none'}
             />
           </TouchableOpacity>
-          {recipe.source && (
-            <View style={styles.sourceIndicator}>
-              <ExternalLink size={12} color="#FFFFFF" />
-            </View>
-          )}
         </View>
 
         <View style={styles.recipeContent}>
@@ -449,61 +386,35 @@ export default function EnhancedRecipesScreen() {
         )}
       </ScrollView>
 
-      {/* Enhanced Import from URL Modal */}
+      {/* Import from URL Modal */}
       <Modal
         visible={showImportModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => !isImporting && setShowImportModal(false)}
+        onRequestClose={() => setShowImportModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.importModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Import Recipe from URL</Text>
-              {!isImporting && (
-                <TouchableOpacity onPress={() => setShowImportModal(false)}>
-                  <X size={24} color="#6B7280" />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity onPress={() => setShowImportModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
             </View>
 
             <Text style={styles.importDescription}>
-              Import recipes from YouTube, Pinterest, and major recipe websites automatically.
+              Paste a URL from Pinterest, food blogs, or recipe websites to automatically import the recipe.
             </Text>
 
             <TextInput
-              style={[styles.urlInput, urlError ? styles.urlInputError : null]}
+              style={styles.urlInput}
               value={importUrl}
-              onChangeText={handleUrlChange}
-              placeholder="https://youtube.com/watch?v=... or https://pinterest.com/..."
+              onChangeText={setImportUrl}
+              placeholder="https://example.com/recipe"
               placeholderTextColor="#9CA3AF"
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!isImporting}
-              multiline={true}
-              numberOfLines={2}
             />
-
-            {urlError ? (
-              <Text style={styles.errorText}>{urlError}</Text>
-            ) : null}
-
-            {isImporting && importProgress ? (
-              <View style={styles.progressContainer}>
-                <ActivityIndicator size="small" color="#F97966" />
-                <Text style={styles.progressText}>{importProgress}</Text>
-              </View>
-            ) : null}
-
-            <View style={styles.supportedSitesContainer}>
-              <TouchableOpacity 
-                style={styles.supportedSitesButton}
-                onPress={openSupportedSites}
-              >
-                <Info size={16} color="#6B7280" />
-                <Text style={styles.supportedSitesText}>View supported sites</Text>
-              </TouchableOpacity>
-            </View>
 
             <View style={styles.modalActions}>
               <Button
@@ -511,62 +422,15 @@ export default function EnhancedRecipesScreen() {
                 onPress={() => setShowImportModal(false)}
                 variant="outline"
                 style={styles.modalButton}
-                disabled={isImporting}
               />
               <Button
-                title={isImporting ? "Importing..." : "Import Recipe"}
+                title={isImporting ? "Importing..." : "Import"}
                 onPress={handleImportFromUrl}
                 variant="primary"
                 style={styles.modalButton}
-                disabled={isImporting || !importUrl.trim() || !!urlError}
+                disabled={isImporting}
               />
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Supported Sites Modal */}
-      <Modal
-        visible={showSupportedSitesModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSupportedSitesModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.supportedSitesModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Supported Websites</Text>
-              <TouchableOpacity onPress={() => setShowSupportedSitesModal(false)}>
-                <X size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.supportedSitesDescription}>
-                Our recipe importer works best with these popular websites:
-              </Text>
-
-              {enhancedRecipeService.getSupportedDomains().map((domain, index) => (
-                <View key={index} style={styles.supportedSiteItem}>
-                  <Text style={styles.supportedSiteText}>• {domain}</Text>
-                </View>
-              ))}
-
-              <View style={styles.noteContainer}>
-                <Text style={styles.noteTitle}>Note:</Text>
-                <Text style={styles.noteText}>
-                  While we support many recipe websites, some sites may have restrictions that prevent automatic importing. 
-                  If a recipe doesn't import correctly, you can always add it manually.
-                </Text>
-              </View>
-            </ScrollView>
-
-            <Button
-              title="Got it"
-              onPress={() => setShowSupportedSitesModal(false)}
-              variant="primary"
-              style={styles.fullWidthButton}
-            />
           </View>
         </View>
       </Modal>
@@ -799,17 +663,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sourceIndicator: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   recipeContent: {
     padding: 12,
   },
@@ -888,14 +741,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    maxHeight: '80%',
-  },
-  supportedSitesModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '80%',
+    maxHeight: '50%',
   },
   filterModalContent: {
     backgroundColor: '#FFFFFF',
@@ -932,82 +778,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     backgroundColor: '#FFFFFF',
     color: '#111827',
-    marginBottom: 16,
-    minHeight: 48,
-    textAlignVertical: 'top',
-  },
-  urlInputError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
-  errorText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#EF4444',
-    marginBottom: 16,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingVertical: 8,
-  },
-  progressText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#F97966',
-    marginLeft: 12,
-  },
-  supportedSitesContainer: {
-    marginBottom: 20,
-  },
-  supportedSitesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  supportedSitesText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    marginLeft: 8,
-  },
-  supportedSitesDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  supportedSiteItem: {
-    paddingVertical: 4,
-  },
-  supportedSiteText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-  },
-  noteContainer: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  noteTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  noteText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  fullWidthButton: {
-    width: '100%',
+    marginBottom: 24,
   },
   filterSection: {
     marginBottom: 24,
