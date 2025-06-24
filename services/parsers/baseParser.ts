@@ -162,3 +162,5 @@ export abstract class BaseParser {
     return undefined;
   }
 }
+
+export { BaseParser }
