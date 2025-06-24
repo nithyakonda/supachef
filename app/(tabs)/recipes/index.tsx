@@ -175,7 +175,7 @@ export default function RecipesScreen() {
       setRecipes(prev => [importedRecipe, ...prev]);
       Alert.alert('Success', 'Recipe imported successfully!');
     } catch (error) {
-      throw new Error('Failed to import recipe. Please check the URL and try again.', error);
+      throw new Error(error);
     } finally {
       setIsImporting(false);
     }
