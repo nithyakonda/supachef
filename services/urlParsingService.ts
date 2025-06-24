@@ -588,10 +588,10 @@ export class RecipeUrlParser {
     return 30;
   }
 
-  private parseServings(yield: any): number {
-    if (typeof yield === 'number') return yield;
-    if (typeof yield === 'string') {
-      const match = yield.match(/(\d+)/);
+  private parseServings(recipeYield: any): number {
+    if (typeof recipeYield === 'number') return recipeYield;
+    if (typeof recipeYield === 'string') {
+      const match = recipeYield.match(/(\d+)/);
       return match ? parseInt(match[1]) : 4;
     }
     return 4;
