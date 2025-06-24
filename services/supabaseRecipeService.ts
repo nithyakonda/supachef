@@ -6,6 +6,15 @@ type RecipeRow = Database['public']['Tables']['recipes']['Row'];
 type RecipeInsert = Database['public']['Tables']['recipes']['Insert'];
 type RecipeUpdate = Database['public']['Tables']['recipes']['Update'];
 
+// Generate a UUID compatible with React Native
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 // Transform database row to Recipe type
 const transformRecipeFromDB = (row: RecipeRow): Recipe => ({
   id: row.id,
@@ -115,7 +124,7 @@ export const supabaseRecipeService = {
 
     const newRecipe: Recipe = {
       ...recipeData,
-      id: crypto.randomUUID(),
+      id: generateUUID(), // Use our custom UUID generator
       createdAt: new Date(),
     };
 
