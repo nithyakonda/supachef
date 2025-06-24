@@ -1,5 +1,5 @@
 import { Recipe } from '@/types';
-import { clientSideRecipeParser } from './clientSideRecipeParser';
+import { clientSideRecipeParser } from './urlParsingService';
 
 // Mock data for development
 const MOCK_RECIPES: Recipe[] = [
