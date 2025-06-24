@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -16,9 +17,12 @@ import {
   Camera,
   Bell,
   Shield,
-  Utensils
+  Utensils,
+  LogOut
 } from 'lucide-react-native';
+import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import { supabase } from '@/utils/supabase';
 
 interface SettingsItem {
@@ -33,6 +37,7 @@ export default function SettingsScreen() {
   const [userFullName, setUserFullName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Load user data
   useEffect(() => {
@@ -52,6 +57,42 @@ export default function SettingsScreen() {
 
     loadUserData();
   }, []);
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoggingOut(true);
+              const { error } = await supabase.auth.signOut();
+              
+              if (error) {
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+                console.error('Logout error:', error);
+              } else {
+                // Navigate to onboarding/welcome screen
+                router.replace('/onboarding');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'An unexpected error occurred during sign out.');
+              console.error('Logout error:', error);
+            } finally {
+              setIsLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const settingsItems: SettingsItem[] = [
     {
@@ -158,6 +199,32 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </Card>
           ))}
+        </View>
+
+        {/* Logout Section */}
+        <View style={styles.logoutSection}>
+          <Card style={styles.logoutCard}>
+            <TouchableOpacity 
+              style={styles.logoutItem}
+              onPress={handleLogout}
+              activeOpacity={0.7}
+              disabled={isLoggingOut}
+            >
+              <View style={styles.settingsItemContent}>
+                <View style={[styles.settingsIcon, styles.logoutIcon]}>
+                  <LogOut size={20} color="#EF4444" />
+                </View>
+                <View style={styles.settingsText}>
+                  <Text style={[styles.settingsTitle, styles.logoutText]}>
+                    {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+                  </Text>
+                  <Text style={styles.settingsSubtitle}>
+                    Sign out of your account
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Card>
         </View>
 
         {/* App Info */}
@@ -278,6 +345,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+  },
+  logoutSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  logoutCard: {
+    padding: 0,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  logoutItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  logoutIcon: {
+    backgroundColor: '#FEF2F2',
+  },
+  logoutText: {
+    color: '#EF4444',
   },
   appInfoSection: {
     alignItems: 'center',
