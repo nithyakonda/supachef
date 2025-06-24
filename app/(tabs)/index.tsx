@@ -10,18 +10,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pencil, Plus, User, Sparkles } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Chip from '../../components/ui/Chip';
 import EditMealModal from '../../components/ui/EditMealModal';
-import { generateSampleWeeklyMealPlans } from '../../data/sampleData';
 import { Meal, MealPlan, MealRecipeData } from '../../types';
 import { supabase } from '../../utils/supabase';
+import { mealPlanService } from '../../services/mealPlanService';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const [weeklyMealPlans, setWeeklyMealPlans] = useState<MealPlan[]>(() => generateSampleWeeklyMealPlans());
+  const [weeklyMealPlans, setWeeklyMealPlans] = useState<MealPlan[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
     // Initialize to today's index in the week (0 = Sunday, 1 = Monday, etc.)
     const today = new Date();
@@ -34,6 +35,8 @@ export default function HomeScreen() {
     mealIndex: number;
   } | null>(null);
   const [userFirstName, setUserFirstName] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -59,9 +62,67 @@ export default function HomeScreen() {
     loadUserData();
   }, []);
 
+  // Load meal plans from Supabase
+  const loadMealPlans = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Calculate the start and end of the current week (Sunday to Saturday)
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      // Fetch meal plans for the current week
+      const mealPlans = await mealPlanService.getMealPlansInRange(startOfWeek, endOfWeek);
+      
+      // Create a complete week array (7 days) with empty plans for missing days
+      const completeWeek: MealPlan[] = [];
+      for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(startOfWeek);
+        currentDate.setDate(startOfWeek.getDate() + i);
+        
+        const existingPlan = mealPlans.find(plan => 
+          plan.date.toDateString() === currentDate.toDateString()
+        );
+        
+        if (existingPlan) {
+          completeWeek.push(existingPlan);
+        } else {
+          // Create empty meal plan for missing days
+          completeWeek.push({
+            id: `empty-${i}`,
+            userId: 'current-user',
+            date: currentDate,
+            meals: [],
+            isCompleted: false,
+          });
+        }
+      }
+
+      setWeeklyMealPlans(completeWeek);
+    } catch (error) {
+      console.error('Error loading meal plans:', error);
+      setError('Failed to load meal plans. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load meal plans when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMealPlans();
+    }, [])
+  );
+
   // Initial scroll to today's meals
   useEffect(() => {
-    if (scrollViewRef.current) {
+    if (scrollViewRef.current && !loading) {
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({
           x: selectedDayIndex * width,
@@ -69,7 +130,7 @@ export default function HomeScreen() {
         });
       }, 100);
     }
-  }, []);
+  }, [loading]);
 
   const handleDayPress = (dayIndex: number) => {
     setSelectedDayIndex(dayIndex);
@@ -90,38 +151,49 @@ export default function HomeScreen() {
     setShowEditMealModal(true);
   };
 
-  const handleSaveEditedMeal = (updatedMealRecipes: MealRecipeData[], newDayIndex?: number, newMealType?: string) => {
+  const handleSaveEditedMeal = async (updatedMealRecipes: MealRecipeData[], newDayIndex?: number, newMealType?: string) => {
     if (!currentMealEditInfo) return;
 
-    const { dayIndex: originalDayIndex, mealIndex: originalMealIndex } = currentMealEditInfo;
-    const targetDayIndex = newDayIndex !== undefined ? newDayIndex : originalDayIndex;
-    const targetMealType = newMealType || currentMealEditInfo.meal.type;
+    try {
+      const { dayIndex: originalDayIndex, mealIndex: originalMealIndex } = currentMealEditInfo;
+      const targetDayIndex = newDayIndex !== undefined ? newDayIndex : originalDayIndex;
+      const targetMealType = newMealType || currentMealEditInfo.meal.type;
 
-    setWeeklyMealPlans(prevPlans => {
-      const newPlans = [...prevPlans];
-      
-      // Remove meal from original position
-      newPlans[originalDayIndex] = {
-        ...newPlans[originalDayIndex],
-        meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
-      };
+      // Update the local state immediately for better UX
+      setWeeklyMealPlans(prevPlans => {
+        const newPlans = [...prevPlans];
+        
+        // Remove meal from original position
+        newPlans[originalDayIndex] = {
+          ...newPlans[originalDayIndex],
+          meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
+        };
 
-      // Create updated meal with new recipe data
-      const updatedMeal: Meal = {
-        ...currentMealEditInfo.meal,
-        type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-        mealRecipes: updatedMealRecipes,
-        id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
-      };
+        // Create updated meal with new recipe data
+        const updatedMeal: Meal = {
+          ...currentMealEditInfo.meal,
+          type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+          mealRecipes: updatedMealRecipes,
+          id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
+        };
 
-      // Add meal to target position
-      newPlans[targetDayIndex] = {
-        ...newPlans[targetDayIndex],
-        meals: [...newPlans[targetDayIndex].meals, updatedMeal]
-      };
+        // Add meal to target position
+        newPlans[targetDayIndex] = {
+          ...newPlans[targetDayIndex],
+          meals: [...newPlans[targetDayIndex].meals, updatedMeal]
+        };
 
-      return newPlans;
-    });
+        return newPlans;
+      });
+
+      // TODO: Update meal plan in Supabase
+      // This would involve updating the meal_entries table
+      // For now, we'll just update the local state
+
+    } catch (error) {
+      console.error('Error saving meal:', error);
+      setError('Failed to save meal changes. Please try again.');
+    }
 
     setShowEditMealModal(false);
     setCurrentMealEditInfo(null);
@@ -131,6 +203,32 @@ export default function HomeScreen() {
     setShowEditMealModal(false);
     setCurrentMealEditInfo(null);
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading your meal plans...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button
+            title="Retry"
+            onPress={loadMealPlans}
+            variant="primary"
+            style={styles.retryButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const selectedPlan = weeklyMealPlans[selectedDayIndex];
 
@@ -309,6 +407,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 32,
   },
   header: {
     flexDirection: 'row',

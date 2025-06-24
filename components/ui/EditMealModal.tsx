@@ -12,8 +12,8 @@ import {
 import { X, Search } from 'lucide-react-native';
 import Button from './Button';
 import Chip from './Chip';
-import { sampleRecipes } from '@/data/sampleData';
 import { Meal, Recipe, MealPlan, MealRecipeData } from '@/types';
+import { recipeService } from '@/services/recipeService';
 
 interface EditMealModalProps {
   visible: boolean;
@@ -41,25 +41,42 @@ export default function EditMealModal({
   const [selectedMealType, setSelectedMealType] = useState(meal.type);
   const [isLeftover, setIsLeftover] = useState(false);
   const [isLunchbox, setIsLunchbox] = useState(false);
+  const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // Check if the current meal is a placeholder meal
   const isPlaceholderMeal = meal.mealRecipes && meal.mealRecipes.length > 0 && meal.mealRecipes[0].isPlaceholder;
 
+  // Load all recipes from Supabase
+  const loadRecipes = async () => {
+    try {
+      setLoading(true);
+      const recipes = await recipeService.getAllRecipes();
+      setAllRecipes(recipes);
+    } catch (error) {
+      console.error('Error loading recipes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Initialize state when modal opens
   useEffect(() => {
     if (visible) {
+      loadRecipes();
+      
       if (meal.mealRecipes && meal.mealRecipes.length > 0) {
-        // Find the recipe from sample recipes based on the first meal recipe
+        // Find the recipe from all recipes based on the first meal recipe
         const firstMealRecipe = meal.mealRecipes[0];
-        const foundRecipe = sampleRecipes.find(recipe => recipe.id === firstMealRecipe.recipeId);
+        const foundRecipe = allRecipes.find(recipe => recipe.id === firstMealRecipe.recipeId);
         
         if (foundRecipe) {
           setSelectedRecipe(foundRecipe);
           setSearchQuery(foundRecipe.title);
         } else {
-          // If recipe not found in sample recipes, use the title from meal recipe data
+          // If recipe not found in recipes, use the title from meal recipe data
           setSelectedRecipe(null);
           setSearchQuery(firstMealRecipe.title);
           setCustomTitle(firstMealRecipe.title);
@@ -81,7 +98,7 @@ export default function EditMealModal({
   }, [visible, meal, currentDayIndex]);
 
   // Filter recipes based on search query
-  const filteredRecipes = sampleRecipes.filter(recipe =>
+  const filteredRecipes = allRecipes.filter(recipe =>
     recipe.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -104,7 +121,7 @@ export default function EditMealModal({
     setSearchQuery(text);
     
     // If the text doesn't match any recipe exactly, clear selected recipe
-    const exactMatch = sampleRecipes.find(recipe => 
+    const exactMatch = allRecipes.find(recipe => 
       recipe.title.toLowerCase() === text.toLowerCase()
     );
     
@@ -217,8 +234,15 @@ export default function EditMealModal({
                 />
               </View>
 
+              {/* Loading indicator */}
+              {loading && (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Loading recipes...</Text>
+                </View>
+              )}
+
               {/* Recipe Suggestions - Only show for non-placeholder meals */}
-              {showSuggestions && !isPlaceholderMeal && (
+              {showSuggestions && !isPlaceholderMeal && !loading && (
                 <View style={styles.suggestionsContainer}>
                   {filteredRecipes.map((recipe) => (
                     <TouchableOpacity
@@ -256,7 +280,7 @@ export default function EditMealModal({
               )}
 
               {/* No results message - Only show for non-placeholder meals */}
-              {searchQuery.length > 0 && filteredRecipes.length === 0 && !showCustomPreview && !isPlaceholderMeal && (
+              {searchQuery.length > 0 && filteredRecipes.length === 0 && !showCustomPreview && !isPlaceholderMeal && !loading && (
                 <View style={styles.noResultsContainer}>
                   <Text style={styles.noResultsText}>
                     No recipes found. Keep typing to create a custom meal.
@@ -405,6 +429,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#111827',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
   suggestionsContainer: {
     marginBottom: 16,

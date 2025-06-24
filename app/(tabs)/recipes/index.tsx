@@ -18,7 +18,6 @@ import { router, useFocusEffect } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
-import { sampleRecipes } from '@/data/sampleData';
 import { Recipe } from '@/types';
 import { recipeService } from '@/services/recipeService';
 
@@ -26,26 +25,30 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2; // 2 cards per row with margins
 
 export default function RecipesScreen() {
-  const [recipes, setRecipes] = useState<Recipe[]>(sampleRecipes);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<string[]>(['1', '3']);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [sortBy, setSortBy] = useState<'recent' | 'alphabetical' | 'rating'>('recent');
   const [filterBy, setFilterBy] = useState<'all' | 'favorites'>('all');
   const [importUrl, setImportUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load recipes from database on component mount and when screen comes into focus
+  // Load recipes from Supabase on component mount and when screen comes into focus
   const loadRecipes = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const savedRecipes = await recipeService.getAllRecipes();
-      if (savedRecipes.length > 0) {
-        setRecipes(savedRecipes);
-      }
+      setRecipes(savedRecipes);
     } catch (error) {
       console.error('Error loading recipes:', error);
+      setError('Failed to load recipes. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,7 +69,7 @@ export default function RecipesScreen() {
     if (selectedTags.length > 0 && !selectedTags.some(tag => recipe.tags.includes(tag))) {
       return false;
     }
-    if (filterBy === 'favorites' && !favorites.includes(recipe.id)) {
+    if (filterBy === 'favorites' && !recipe.isFavorite) {
       return false;
     }
     return true;
@@ -89,7 +92,7 @@ export default function RecipesScreen() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 10);
 
-  const favoriteRecipes = recipes.filter(recipe => favorites.includes(recipe.id));
+  const favoriteRecipes = recipes.filter(recipe => recipe.isFavorite);
 
   const recipesByTag = allTags.reduce((acc, tag) => {
     acc[tag] = recipes.filter(recipe => recipe.tags.includes(tag)).slice(0, 10);
@@ -97,17 +100,16 @@ export default function RecipesScreen() {
   }, {} as Record<string, Recipe[]>);
 
   const toggleFavorite = async (recipeId: string) => {
-    const newFavorites = favorites.includes(recipeId) 
-      ? favorites.filter(id => id !== recipeId)
-      : [...favorites, recipeId];
-    
-    setFavorites(newFavorites);
-    
-    // Update recipe in database
-    const recipe = recipes.find(r => r.id === recipeId);
-    if (recipe) {
-      const updatedRecipe = { ...recipe, isFavorite: newFavorites.includes(recipeId) };
-      await recipeService.updateRecipe(updatedRecipe);
+    try {
+      const updatedRecipe = await recipeService.toggleFavorite(recipeId);
+      if (updatedRecipe) {
+        setRecipes(prev => prev.map(recipe => 
+          recipe.id === recipeId ? updatedRecipe : recipe
+        ));
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite status');
     }
   };
 
@@ -157,7 +159,6 @@ export default function RecipesScreen() {
             try {
               await recipeService.deleteRecipe(recipeId);
               setRecipes(prev => prev.filter(r => r.id !== recipeId));
-              setFavorites(prev => prev.filter(id => id !== recipeId));
             } catch (error) {
               Alert.alert('Error', 'Failed to delete recipe');
             }
@@ -176,7 +177,6 @@ export default function RecipesScreen() {
     setIsImporting(true);
     try {
       const importedRecipe = await recipeService.importFromUrl(importUrl);
-      await recipeService.saveRecipe(importedRecipe);
       setRecipes(prev => [importedRecipe, ...prev]);
       setShowImportModal(false);
       setImportUrl('');
@@ -217,8 +217,8 @@ export default function RecipesScreen() {
           >
             <Heart
               size={18}
-              color={favorites.includes(recipe.id) ? '#F97966' : '#9CA3AF'}
-              fill={favorites.includes(recipe.id) ? '#F97966' : 'none'}
+              color={recipe.isFavorite ? '#F97966' : '#9CA3AF'}
+              fill={recipe.isFavorite ? '#F97966' : 'none'}
             />
           </TouchableOpacity>
         </View>
@@ -288,6 +288,32 @@ export default function RecipesScreen() {
       </View>
     );
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading your recipes...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button
+            title="Retry"
+            onPress={loadRecipes}
+            variant="primary"
+            style={styles.retryButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -517,6 +543,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 32,
   },
   header: {
     flexDirection: 'row',
