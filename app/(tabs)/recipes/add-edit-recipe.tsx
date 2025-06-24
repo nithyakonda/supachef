@@ -39,9 +39,9 @@ export default function AddEditRecipeScreen() {
     title: '',
     description: '',
     imageUrl: '',
-    cookingTime: 30,
-    servings: 4,
-    difficulty: 'Easy',
+    cookingTime: 0, // Changed from 30 to 0 to indicate unknown
+    servings: 0, // Changed from 4 to 0 to indicate unknown
+    difficulty: 'Medium',
     calories: 0,
     ingredients: '',
     instructions: '',
@@ -123,8 +123,8 @@ export default function AddEditRecipeScreen() {
         title: formData.title,
         description: formData.description,
         imageUrl: formData.imageUrl || 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
-        cookingTime: formData.cookingTime,
-        servings: formData.servings,
+        cookingTime: formData.cookingTime || 0, // Keep 0 if not specified
+        servings: formData.servings || 0, // Keep 0 if not specified
         difficulty: formData.difficulty,
         calories: formData.calories,
         ingredients: ingredientsArray,
@@ -248,9 +248,10 @@ export default function AddEditRecipeScreen() {
               <Text style={styles.formLabel}>Cooking Time (min)</Text>
               <TextInput
                 style={styles.formInput}
-                value={formData.cookingTime.toString()}
+                value={formData.cookingTime > 0 ? formData.cookingTime.toString() : ''}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, cookingTime: parseInt(text) || 0 }))}
                 keyboardType="numeric"
+                placeholder="0 = Unknown"
                 placeholderTextColor="#9CA3AF"
               />
             </View>
@@ -258,9 +259,10 @@ export default function AddEditRecipeScreen() {
               <Text style={styles.formLabel}>Servings</Text>
               <TextInput
                 style={styles.formInput}
-                value={formData.servings.toString()}
+                value={formData.servings > 0 ? formData.servings.toString() : ''}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, servings: parseInt(text) || 0 }))}
                 keyboardType="numeric"
+                placeholder="0 = Unknown"
                 placeholderTextColor="#9CA3AF"
               />
             </View>
@@ -293,9 +295,10 @@ export default function AddEditRecipeScreen() {
               <Text style={styles.formLabel}>Calories (optional)</Text>
               <TextInput
                 style={styles.formInput}
-                value={formData.calories.toString()}
+                value={formData.calories > 0 ? formData.calories.toString() : ''}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, calories: parseInt(text) || 0 }))}
                 keyboardType="numeric"
+                placeholder="0 = Unknown"
                 placeholderTextColor="#9CA3AF"
               />
             </View>

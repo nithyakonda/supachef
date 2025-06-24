@@ -206,26 +206,35 @@ export default function RecipeDetailScreen() {
           {/* Quick Stats */}
           <Card style={styles.statsCard}>
             <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <View style={styles.statIcon}>
-                  <Clock size={20} color="#F97966" />
-                </View>
-                <Text style={styles.statLabel}>Cook Time</Text>
-                <Text style={styles.statValue}>{recipe.cookingTime} min</Text>
-              </View>
+              {/* Only show cooking time if it's greater than 0 */}
+              {recipe.cookingTime > 0 && (
+                <>
+                  <View style={styles.statItem}>
+                    <View style={styles.statIcon}>
+                      <Clock size={20} color="#F97966" />
+                    </View>
+                    <Text style={styles.statLabel}>Cook Time</Text>
+                    <Text style={styles.statValue}>{recipe.cookingTime} min</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                </>
+              )}
               
-              <View style={styles.statDivider} />
+              {/* Only show servings if it's greater than 0 */}
+              {recipe.servings > 0 && (
+                <>
+                  <View style={styles.statItem}>
+                    <View style={styles.statIcon}>
+                      <Users size={20} color="#F97966" />
+                    </View>
+                    <Text style={styles.statLabel}>Servings</Text>
+                    <Text style={styles.statValue}>{recipe.servings}</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                </>
+              )}
               
-              <View style={styles.statItem}>
-                <View style={styles.statIcon}>
-                  <Users size={20} color="#F97966" />
-                </View>
-                <Text style={styles.statLabel}>Servings</Text>
-                <Text style={styles.statValue}>{recipe.servings}</Text>
-              </View>
-              
-              <View style={styles.statDivider} />
-              
+              {/* Always show difficulty */}
               <View style={styles.statItem}>
                 <View style={styles.statIcon}>
                   <ChefHat size={20} color="#F97966" />
@@ -236,6 +245,7 @@ export default function RecipeDetailScreen() {
                 </Text>
               </View>
               
+              {/* Only show calories if it's greater than 0 */}
               {recipe.calories > 0 && (
                 <>
                   <View style={styles.statDivider} />

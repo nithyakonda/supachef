@@ -53,44 +53,56 @@ export class GenericParser extends BaseParser {
             metadata.author = this.decodeHtml(author.name || author);
           }
 
+          // Only include timing if we can parse it reliably
           if (data.totalTime || data.cookTime) {
-            metadata.cookTime = this.extractTime(data.totalTime || data.cookTime);
+            const timeString = data.totalTime || data.cookTime;
+            const parsedTime = this.extractTime(timeString);
+            if (parsedTime) {
+              metadata.cookTime = parsedTime;
+            }
           }
 
+          // Only include servings if explicitly provided
           if (data.recipeYield) {
-            metadata.servings = Array.isArray(data.recipeYield) 
+            const yieldValue = Array.isArray(data.recipeYield) 
               ? data.recipeYield[0] 
               : data.recipeYield.toString();
+            metadata.servings = yieldValue;
           }
 
-          if (data.recipeIngredient) {
+          // Only include ingredients if they exist
+          if (data.recipeIngredient && Array.isArray(data.recipeIngredient) && data.recipeIngredient.length > 0) {
             metadata.ingredients = data.recipeIngredient.map((ing: string) => this.decodeHtml(ing));
           }
 
+          // Only include rating if it exists and is valid
           if (data.aggregateRating?.ratingValue) {
-            metadata.rating = parseFloat(data.aggregateRating.ratingValue);
+            const rating = parseFloat(data.aggregateRating.ratingValue);
+            if (rating >= 1 && rating <= 5) {
+              metadata.rating = rating;
+            }
           }
 
+          // Only include keywords/tags if they exist
           if (data.keywords) {
             metadata.tags = Array.isArray(data.keywords) 
               ? data.keywords.map((tag: string) => this.decodeHtml(tag))
               : [this.decodeHtml(data.keywords)];
           }
 
-          // Estimate difficulty based on ingredient count and instructions
-          if (data.recipeIngredient && data.recipeInstruction) {
-            const ingredientCount = data.recipeIngredient.length;
-            const instructionCount = Array.isArray(data.recipeInstruction) 
-              ? data.recipeInstruction.length 
-              : 1;
+          // Only include difficulty if explicitly mentioned in categories
+          if (data.recipeCategory) {
+            const categories = Array.isArray(data.recipeCategory) ? data.recipeCategory : [data.recipeCategory];
+            const categoryText = categories.join(' ').toLowerCase();
             
-            if (ingredientCount <= 5 && instructionCount <= 5) {
+            if (categoryText.includes('easy') || categoryText.includes('simple') || categoryText.includes('beginner')) {
               metadata.difficulty = 'Easy';
-            } else if (ingredientCount > 10 || instructionCount > 10) {
+            } else if (categoryText.includes('hard') || categoryText.includes('difficult') || categoryText.includes('advanced')) {
               metadata.difficulty = 'Hard';
-            } else {
+            } else if (categoryText.includes('medium') || categoryText.includes('intermediate')) {
               metadata.difficulty = 'Medium';
             }
+            // If no clear difficulty indicator, don't set it
           }
         } else if (data['@type'] === 'Article' && !metadata.title) {
           if (data.headline) metadata.title = this.decodeHtml(data.headline);

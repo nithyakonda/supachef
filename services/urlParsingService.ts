@@ -81,16 +81,16 @@ class RealUrlParsingService {
     // Parse instructions (they might come as a single string or array)
     const instructions = this.parseInstructions(metadata);
 
-    // Determine cooking time in minutes
+    // Determine cooking time in minutes (only if we can parse it)
     const cookingTime = this.parseCookingTime(metadata.cookTime);
 
-    // Parse servings
+    // Parse servings (only if we can determine it)
     const servings = this.parseServings(metadata.servings);
 
-    // Determine difficulty
+    // Determine difficulty (only if explicitly provided)
     const difficulty = this.parseDifficulty(metadata.difficulty);
 
-    // Parse calories (if available)
+    // Parse calories (only if available)
     const calories = this.parseCalories(metadata);
 
     return {
@@ -184,28 +184,19 @@ class RealUrlParsingService {
    * Parse instructions from metadata
    */
   private parseInstructions(metadata: ParsedMetadata): string[] {
-    // Instructions might be in the description or we might need to provide generic ones
-    const defaultInstructions = [
-      'Prepare all ingredients according to the original recipe.',
-      'Follow the cooking method described in the source recipe.',
-      'Cook until done according to the original instructions.',
-      'Serve as directed in the original recipe.',
-    ];
-
     // If we have specific instructions from JSON-LD, they would be parsed by individual parsers
-    // For now, return default instructions with a note to check the source
+    // For now, return a note to check the source since we can't reliably extract instructions
     return [
       'Please refer to the original recipe for detailed cooking instructions.',
-      `Original recipe can be found at: ${metadata.originalUrl}`,
-      ...defaultInstructions,
+      `Original recipe: ${metadata.originalUrl}`,
     ];
   }
 
   /**
-   * Parse cooking time from string to minutes
+   * Parse cooking time from string to minutes - only return if we can confidently parse it
    */
   private parseCookingTime(cookTime?: string): number {
-    if (!cookTime) return 30; // Default 30 minutes
+    if (!cookTime) return 0; // Return 0 to indicate unknown
 
     // Extract numbers and time units
     const hourMatch = cookTime.match(/(\d+)\s*h/i);
@@ -225,65 +216,71 @@ class RealUrlParsingService {
     if (totalMinutes === 0) {
       const numberMatch = cookTime.match(/(\d+)/);
       if (numberMatch) {
-        totalMinutes = parseInt(numberMatch[1]);
-        // If the number is very large, it might be in seconds
-        if (totalMinutes > 300) {
-          totalMinutes = Math.round(totalMinutes / 60);
+        const number = parseInt(numberMatch[1]);
+        // Only use if it seems reasonable for cooking time (5-480 minutes)
+        if (number >= 5 && number <= 480) {
+          totalMinutes = number;
         }
       }
     }
 
-    return totalMinutes > 0 ? totalMinutes : 30;
+    return totalMinutes; // Return 0 if we couldn't parse it
   }
 
   /**
-   * Parse servings from string to number
+   * Parse servings from string to number - only return if we can determine it
    */
   private parseServings(servingsStr?: string): number {
-    if (!servingsStr) return 4; // Default 4 servings
+    if (!servingsStr) return 0; // Return 0 to indicate unknown
 
     const match = servingsStr.match(/(\d+)/);
-    return match ? parseInt(match[1]) : 4;
+    if (match) {
+      const servings = parseInt(match[1]);
+      // Only return if it's a reasonable serving size (1-20)
+      if (servings >= 1 && servings <= 20) {
+        return servings;
+      }
+    }
+    
+    return 0; // Return 0 if we couldn't parse it
   }
 
   /**
-   * Parse difficulty level
+   * Parse difficulty level - only return if explicitly provided
    */
   private parseDifficulty(difficulty?: string): 'Easy' | 'Medium' | 'Hard' {
-    if (!difficulty) return 'Medium';
+    if (!difficulty) return 'Medium'; // Default fallback
 
     const lower = difficulty.toLowerCase();
-    if (lower.includes('easy') || lower.includes('simple') || lower.includes('quick')) {
+    if (lower.includes('easy') || lower.includes('simple') || lower.includes('quick') || lower.includes('beginner')) {
       return 'Easy';
-    } else if (lower.includes('hard') || lower.includes('difficult') || lower.includes('challenging') || lower.includes('advanced')) {
+    } else if (lower.includes('hard') || lower.includes('difficult') || lower.includes('challenging') || lower.includes('advanced') || lower.includes('expert')) {
       return 'Hard';
-    } else {
+    } else if (lower.includes('medium') || lower.includes('intermediate') || lower.includes('moderate')) {
       return 'Medium';
     }
+
+    // If we can't determine difficulty, return Medium as a safe default
+    return 'Medium';
   }
 
   /**
-   * Parse calories from metadata
+   * Parse calories from metadata - only return if we can find it
    */
   private parseCalories(metadata: ParsedMetadata): number {
-    // Calories might be in the description or other fields
+    // Look for calories in the description or title
     const text = `${metadata.description} ${metadata.title}`.toLowerCase();
     
     const calorieMatch = text.match(/(\d+)\s*cal/);
     if (calorieMatch) {
-      return parseInt(calorieMatch[1]);
+      const calories = parseInt(calorieMatch[1]);
+      // Only return if it's a reasonable calorie count (50-2000 per serving)
+      if (calories >= 50 && calories <= 2000) {
+        return calories;
+      }
     }
 
-    // Default based on meal type
-    if (text.includes('dessert') || text.includes('cake') || text.includes('cookie')) {
-      return 350;
-    } else if (text.includes('salad') || text.includes('soup')) {
-      return 250;
-    } else if (text.includes('main') || text.includes('dinner') || text.includes('entree')) {
-      return 450;
-    }
-
-    return 300; // Default calories
+    return 0; // Return 0 to indicate unknown
   }
 
   /**
@@ -303,29 +300,31 @@ class RealUrlParsingService {
     // Add tags based on content analysis
     const content = `${metadata.title} ${metadata.description}`.toLowerCase();
     
-    // Meal type tags
-    if (content.includes('breakfast')) tags.add('Breakfast');
-    if (content.includes('lunch')) tags.add('Lunch');
-    if (content.includes('dinner')) tags.add('Dinner');
-    if (content.includes('dessert')) tags.add('Dessert');
-    if (content.includes('snack')) tags.add('Snack');
+    // Meal type tags - only add if clearly indicated
+    if (content.includes('breakfast') || content.includes('morning')) tags.add('Breakfast');
+    if (content.includes('lunch') || content.includes('midday')) tags.add('Lunch');
+    if (content.includes('dinner') || content.includes('evening') || content.includes('supper')) tags.add('Dinner');
+    if (content.includes('dessert') || content.includes('sweet') || content.includes('cake') || content.includes('cookie')) tags.add('Dessert');
+    if (content.includes('snack') || content.includes('appetizer')) tags.add('Snack');
 
-    // Dietary tags
+    // Dietary tags - only add if explicitly mentioned
     if (content.includes('vegetarian')) tags.add('Vegetarian');
     if (content.includes('vegan')) tags.add('Vegan');
     if (content.includes('gluten-free') || content.includes('gluten free')) tags.add('Gluten-Free');
-    if (content.includes('healthy')) tags.add('Healthy');
-    if (content.includes('low-carb') || content.includes('low carb')) tags.add('Low-Carb');
+    if (content.includes('dairy-free') || content.includes('dairy free')) tags.add('Dairy-Free');
+    if (content.includes('low-carb') || content.includes('low carb') || content.includes('keto')) tags.add('Low-Carb');
+    if (content.includes('paleo')) tags.add('Paleo');
 
-    // Cooking method tags
-    if (content.includes('baked') || content.includes('baking')) tags.add('Baked');
-    if (content.includes('grilled')) tags.add('Grilled');
-    if (content.includes('fried')) tags.add('Fried');
-    if (content.includes('slow cooker') || content.includes('crockpot')) tags.add('Slow Cooker');
+    // Cooking method tags - only add if clearly mentioned
+    if (content.includes('baked') || content.includes('baking') || content.includes('oven')) tags.add('Baked');
+    if (content.includes('grilled') || content.includes('grill')) tags.add('Grilled');
+    if (content.includes('fried') || content.includes('frying')) tags.add('Fried');
+    if (content.includes('slow cooker') || content.includes('crockpot') || content.includes('slow-cooked')) tags.add('Slow Cooker');
+    if (content.includes('instant pot') || content.includes('pressure cooker')) tags.add('Pressure Cooker');
 
-    // Time-based tags
-    if (content.includes('quick') || content.includes('easy') || content.includes('30 min')) tags.add('Quick');
-    if (content.includes('make-ahead') || content.includes('prep ahead')) tags.add('Make-Ahead');
+    // Time-based tags - only add if clearly indicated
+    if (content.includes('quick') || content.includes('fast') || content.includes('30 min') || content.includes('15 min')) tags.add('Quick');
+    if (content.includes('make-ahead') || content.includes('prep ahead') || content.includes('overnight')) tags.add('Make-Ahead');
 
     // Always add imported tag
     tags.add('Imported');
@@ -349,7 +348,7 @@ class RealUrlParsingService {
       notes.push(`Original rating: ${metadata.rating}/5 stars`);
     }
 
-    notes.push('Please refer to the original recipe for complete instructions and any special techniques.');
+    notes.push('Please refer to the original recipe for complete instructions and nutritional information.');
 
     return notes.join('\n\n');
   }
