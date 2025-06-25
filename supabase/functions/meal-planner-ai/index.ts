@@ -1,9 +1,20 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 // Load environment variables for AI provider selection
 const AI_PROVIDER = Deno.env.get("AI_PROVIDER") ?? "groq";
+
 // === Adapter: Groq + Mixtral (mistral-saba-24b) ===
-async function callGroq(prompt) {
+async function callGroq(prompt: string) {
   const apiKey = Deno.env.get("GROQ_API_KEY");
+  
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY environment variable is not set");
+  }
+
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -11,7 +22,7 @@ async function callGroq(prompt) {
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: "mistral-saba-24b",
+      model: "mixtral-8x7b-32768",
       messages: [
         {
           role: "user",
@@ -21,14 +32,37 @@ async function callGroq(prompt) {
       temperature: 0.7
     })
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
   const result = await response.json();
   const raw = result?.choices?.[0]?.message?.content?.trim() || "";
+  
+  if (!raw) {
+    throw new Error("Empty response from Groq API");
+  }
+
   const cleaned = raw.replace(/^```json\s*|^```\s*|```$/g, "").trim();
-  return JSON.parse(cleaned);
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch (parseError) {
+    console.error("Failed to parse Groq response:", cleaned);
+    throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
+  }
 }
+
 // === Adapter: Claude (Anthropic) ===
-async function callClaude(prompt) {
+async function callClaude(prompt: string) {
   const apiKey = Deno.env.get("CLAUDE_API_KEY");
+  
+  if (!apiKey) {
+    throw new Error("CLAUDE_API_KEY environment variable is not set");
+  }
+
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -48,13 +82,31 @@ async function callClaude(prompt) {
       ]
     })
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Claude API error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
   const result = await response.json();
   const content = result?.content?.[0]?.text ?? "{}";
-  return JSON.parse(content);
+  
+  try {
+    return JSON.parse(content);
+  } catch (parseError) {
+    console.error("Failed to parse Claude response:", content);
+    throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
+  }
 }
+
 // === Adapter: OpenAI ===
-async function callOpenAI(prompt) {
+async function callOpenAI(prompt: string) {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
+  
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -72,13 +124,26 @@ async function callOpenAI(prompt) {
       temperature: 0.7
     })
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
   const result = await response.json();
   const message = result?.choices?.[0]?.message?.content ?? "{}";
-  return JSON.parse(message);
+  
+  try {
+    return JSON.parse(message);
+  } catch (parseError) {
+    console.error("Failed to parse OpenAI response:", message);
+    throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
+  }
 }
+
 // === Dispatcher ===
-async function getAIResponse(prompt) {
-  switch(AI_PROVIDER){
+async function getAIResponse(prompt: string) {
+  switch(AI_PROVIDER) {
     case "claude":
       return await callClaude(prompt);
     case "openai":
@@ -88,8 +153,9 @@ async function getAIResponse(prompt) {
       return await callGroq(prompt);
   }
 }
+
 // === Helper function to build prompt ===
-function buildPrompt({ preferences, ingredients, savedRecipes }) {
+function buildPrompt({ preferences, ingredients, savedRecipes }: any) {
   const now = new Date();
   // ISO date string (e.g. "2025-06-24")
   const todayISO = now.toISOString().split("T")[0];
@@ -97,8 +163,12 @@ function buildPrompt({ preferences, ingredients, savedRecipes }) {
   const weekdayName = now.toLocaleDateString("en-US", {
     weekday: "long"
   });
-  const recipeText = savedRecipes.map((r, i)=>`\${i + 1}. \${r.title} (id: \${r.id})  \n   Image: \${r.imageUrl}  \n   Tags: \${r.tags.join(", ")}  \n   Description: \${r.description}`).join("\n\n");
-  return `You are an AI assistant generating weekly meal plans for a user. You must return a structured plan in JSON format using the user’s saved recipes, preferences, and available ingredients. Your output will be used by a mobile app.
+
+  const recipeText = savedRecipes.map((r: any, i: number) => 
+    `${i + 1}. ${r.title} (id: ${r.id})  \n   Image: ${r.imageUrl}  \n   Tags: ${r.tags.join(", ")}  \n   Description: ${r.description}`
+  ).join("\n\n");
+
+  return `You are an AI assistant generating weekly meal plans for a user. You must return a structured plan in JSON format using the user's saved recipes, preferences, and available ingredients. Your output will be used by a mobile app.
 
 ---
 
@@ -141,7 +211,7 @@ ${recipeText}
 5. **Consider meal pairings or combinations** when appropriate (e.g., Butter Chicken + Naan + Raita).  
    - Return **up to 3 recipes** for a single meal.
    - Only include pairings when they enhance the meal experience.
-6. If a recipe is suggested and not in the user’s saved collection:
+6. If a recipe is suggested and not in the user's saved collection:
    - Set \`"ai_suggested": true\`
    - Return full recipe details in a \`"suggested_recipe"\` object
 7. If no recipe can be found or suggested:
@@ -184,7 +254,7 @@ Return only valid JSON that matches this structure:
                 "ai_suggested": false,
                 "leftover": false,
                 "lunchbox": false,
-                "is_placeholder": true,
+                "is_placeholder": true
               }
             ]
           },
@@ -225,30 +295,90 @@ Return only valid JSON that matches this structure:
     ]
   }
 }
-Return only valid JSON. Do not include any explanatory text.
-`;
+
+Return only valid JSON. Do not include any explanatory text.`;
 }
+
 // === Supabase Edge Function handler ===
-serve(async (req)=>{
+Deno.serve(async (req: Request) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
   try {
-    const body = await req.json();
+    // Validate request method
+    if (req.method !== "POST") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Method not allowed. Use POST instead.",
+        }),
+        {
+          status: 405,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Parse request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid JSON in request body",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Validate required fields
+    if (!body.preferences || !body.ingredients || !body.savedRecipes) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Missing required fields: preferences, ingredients, or savedRecipes",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Build prompt and get AI response
     const prompt = buildPrompt(body);
     const aiResponse = await getAIResponse(prompt);
-    return new Response(JSON.stringify(aiResponse), {
-      headers: {
-        "Content-Type": "application/json"
+
+    return new Response(
+      JSON.stringify(aiResponse),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
-    });
-  } catch (e) {
-    console.error("Function error:", e);
-    return new Response(JSON.stringify({
-      success: false,
-      error: e.message
-    }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json"
+    );
+  } catch (error) {
+    console.error("Edge function error:", error);
+    
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : "Internal server error",
+        details: error instanceof Error ? error.stack : undefined,
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
-    });
+    );
   }
 });

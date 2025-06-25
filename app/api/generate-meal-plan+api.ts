@@ -62,16 +62,34 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    // Parse and return the AI response
-    const aiResponse: AIResponse = await response.json();
-    
-    return new Response(
-      JSON.stringify(aiResponse),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    // Parse and return the AI response with robust error handling
+    try {
+      const aiResponse: AIResponse = await response.json();
+      
+      return new Response(
+        JSON.stringify(aiResponse),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    } catch (jsonError) {
+      // If JSON parsing fails, get the raw response text
+      const responseText = await response.text();
+      console.error('JSON parsing failed. Response was:', responseText);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Edge function returned invalid JSON response. This usually indicates a configuration issue with the AI service or missing environment variables.',
+          details: responseText.substring(0, 500), // Include first 500 chars for debugging
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
   } catch (error) {
     console.error('API route error:', error);
     
