@@ -170,7 +170,7 @@ const PreferenceModal: React.FC<PreferenceModalProps> = ({
 
 export default function PlannerScreen() {
   const [ingredientMethod, setIngredientMethod] = useState<'photo' | 'manual'>('photo');
-  const [manualIngredients, setManualIngredients] = useState('');
+  const [manualIngredients, setManualIngredients] = useState('butternut squash, avocado, chickpeas, greek yogurt, quinoa, cherry tomatoes, cucumber, feta cheese, bread, eggs, chicken , romaine lettuce, parmesan cheese, caesar dressing, croutons, spaghetti, frozen berries, banana, granola, honey, rolled oats');//useState('');
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showPreferenceModal, setShowPreferenceModal] = useState(false);
   const [editingPreference, setEditingPreference] = useState<'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies' | null>(null);
