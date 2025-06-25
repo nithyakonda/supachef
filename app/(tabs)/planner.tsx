@@ -7,14 +7,19 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Camera, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Camera, X, Sparkles } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import { weekDays, mealTypes, dietaryRestrictions } from '@/data/sampleData';
+import { aiService } from '@/services/aiService';
+import { mealPlanService } from '@/services/mealPlanService';
+import { recipeService } from '@/services/recipeService';
+import { AIPayload, AISavedRecipe } from '@/types';
 
 interface PreferenceModalProps {
   visible: boolean;
@@ -169,6 +174,7 @@ export default function PlannerScreen() {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showPreferenceModal, setShowPreferenceModal] = useState(false);
   const [editingPreference, setEditingPreference] = useState<'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies' | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [preferences, setPreferences] = useState({
     currentWeek: weekDays, // Initialize with all days
     mealsPerDay: ['Breakfast', 'Lunch', 'Dinner'], // Initialize with default meals
@@ -179,6 +185,7 @@ export default function PlannerScreen() {
   const handleTakePhoto = () => {
     // Stub implementation - would open camera
     console.log('Opening camera for ingredient detection...');
+    Alert.alert('Camera Feature', 'Camera integration would be implemented here for ingredient detection.');
   };
 
   const handleManualEntry = () => {
@@ -211,12 +218,83 @@ export default function PlannerScreen() {
     setEditingPreference(null);
   };
 
-  const handleSubmitToAI = () => {
-    // Stub implementation - would generate meal plan
-    console.log('Submitting to AI Sous-Chef with:', {
-      ingredients: manualIngredients,
-      preferences,
-    });
+  const handleSubmitToAI = async () => {
+    if (!manualIngredients.trim()) {
+      Alert.alert('Missing Ingredients', 'Please add some ingredients before generating a meal plan.');
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      // Fetch user's saved recipes
+      const savedRecipes = await recipeService.getAllRecipes();
+
+      // Parse ingredients from manual input
+      const ingredients = manualIngredients
+        .split(',')
+        .map(ingredient => ingredient.trim())
+        .filter(ingredient => ingredient.length > 0);
+
+      // Map saved recipes to AI format
+      const aiSavedRecipes: AISavedRecipe[] = savedRecipes.map(recipe => ({
+        id: recipe.id,
+        title: recipe.title,
+        imageUrl: recipe.imageUrl,
+        tags: recipe.tags,
+        description: recipe.description,
+      }));
+
+      // Prepare AI payload
+      const aiPayload: AIPayload = {
+        preferences: {
+          mealsPerDay: preferences.mealsPerDay.length,
+          daysToPlan: preferences.currentWeek.length,
+          dietaryRestrictions: preferences.dietaryRestrictions.filter(item => item !== 'None'),
+          prefersLeftovers: true, // Could be made configurable
+          needsLunchbox: false, // Could be made configurable
+        },
+        ingredients,
+        savedRecipes: aiSavedRecipes,
+      };
+
+      // Validate payload
+      if (!aiService.validatePayload(aiPayload)) {
+        throw new Error('Invalid meal planning preferences. Please check your settings.');
+      }
+
+      // Call AI service
+      const aiResponse = await aiService.generateMealPlanAI(aiPayload);
+
+      if (!aiResponse.success || !aiResponse.data) {
+        throw new Error(aiResponse.error || 'Failed to generate meal plan');
+      }
+
+      // Save the AI-generated meal plan
+      await mealPlanService.saveMealPlanFromAIResponse(aiResponse.data);
+
+      // Show success message
+      Alert.alert(
+        'Meal Plan Generated!',
+        'Your AI-powered meal plan has been created successfully. Check your home screen to see your new meals.',
+        [
+          {
+            text: 'View Meal Plan',
+            onPress: () => router.push('/(tabs)'),
+          },
+        ]
+      );
+
+    } catch (error) {
+      console.error('Error generating meal plan:', error);
+      Alert.alert(
+        'Generation Failed',
+        error instanceof Error ? error.message : 'Failed to generate meal plan. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const getPreferenceModalTitle = () => {
@@ -331,8 +409,21 @@ export default function PlannerScreen() {
           >
             <ChevronLeft size={24} color="#6B7280" />
           </TouchableOpacity>
-          <Text style={styles.title}>Meal Planner</Text>
+          <Text style={styles.title}>AI Meal Planner</Text>
           <View style={styles.placeholder} />
+        </View>
+
+        {/* AI Sous-Chef Banner */}
+        <View style={styles.aiBanner}>
+          <View style={styles.aiIconContainer}>
+            <Sparkles size={24} color="#F97966" />
+          </View>
+          <View style={styles.aiBannerContent}>
+            <Text style={styles.aiBannerTitle}>Your AI Sous-Chef</Text>
+            <Text style={styles.aiBannerDescription}>
+              Tell me what ingredients you have, and I'll create a personalized meal plan just for you!
+            </Text>
+          </View>
         </View>
 
         {/* Add Ingredients Section */}
@@ -369,7 +460,7 @@ export default function PlannerScreen() {
 
         {/* Default Preferences Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Default Preferences</Text>
+          <Text style={styles.sectionTitle}>Meal Planning Preferences</Text>
           
           <Card style={styles.preferencesCard}>
             <TouchableOpacity 
@@ -377,7 +468,7 @@ export default function PlannerScreen() {
               onPress={() => handlePreferenceEdit('currentWeek')}
             >
               <View style={styles.preferenceContent}>
-                <Text style={styles.preferenceTitle}>Current Week</Text>
+                <Text style={styles.preferenceTitle}>Planning Days</Text>
                 <Text style={styles.preferenceSubtitle}>{getPreferenceSubtitle('currentWeek')}</Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
@@ -428,11 +519,12 @@ export default function PlannerScreen() {
       {/* Submit Button */}
       <View style={styles.submitContainer}>
         <Button
-          title="Plan my Week"
+          title={isGenerating ? "Generating Your Meal Plan..." : "Generate Meal Plan"}
           onPress={handleSubmitToAI}
           variant="primary"
           size="large"
           style={styles.submitButton}
+          disabled={isGenerating || !manualIngredients.trim()}
         />
       </View>
 
@@ -479,6 +571,41 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  aiBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 32,
+    padding: 20,
+    backgroundColor: '#FEF3F2',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F97966',
+  },
+  aiIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F97966',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  aiBannerContent: {
+    flex: 1,
+  },
+  aiBannerTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  aiBannerDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 20,
   },
   section: {
     paddingHorizontal: 20,
