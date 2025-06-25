@@ -90,6 +90,13 @@ async function getAIResponse(prompt) {
 }
 // === Helper function to build prompt ===
 function buildPrompt({ preferences, ingredients, savedRecipes }) {
+  const now = new Date();
+  // ISO date string (e.g. "2025-06-24")
+  const todayISO = now.toISOString().split("T")[0];
+  // Weekday name (e.g. "Monday")
+  const weekdayName = now.toLocaleDateString("en-US", {
+    weekday: "long"
+  });
   const recipeText = savedRecipes.map((r, i)=>`\${i + 1}. \${r.title} (id: \${r.id})  \n   Image: \${r.imageUrl}  \n   Tags: \${r.tags.join(", ")}  \n   Description: \${r.description}`).join("\n\n");
   return `You are an AI assistant generating weekly meal plans for a user. You must return a structured plan in JSON format using the user’s saved recipes, preferences, and available ingredients. Your output will be used by a mobile app.
 
@@ -112,6 +119,16 @@ ${recipeText}
 
 ---
 
+### DATE LOGIC:
+
+- Start planning from today: ${weekdayName}, ${todayISO}. 
+- Iterate over \`preferences.daysToPlan\`.  
+- For each day, include:
+  - \`"day"\`: Full weekday name (e.g., \`"Monday"\`)  
+  - \`"date"\`: Date in ISO format (e.g., \`"2025-06-24"\`)
+
+---
+
 ### MEAL PLANNING RULES:
 
 1. Use only recipes that match dietary restrictions and available ingredients.
@@ -120,13 +137,14 @@ ${recipeText}
    - Use recipes with partial ingredient matches.
    - Suggest new recipes as a fallback (see below).
 3. If \`needs lunchbox = true\`, ensure lunch meals are suitable (e.g. dry, portable) using recipe tags or name/description.
-4. **Consider meal pairings or combinations** when appropriate (e.g., Butter Chicken + Naan + Raita).  
+4. **Generate only the meal types specified in \`preferences.mealsPerDay\`** for each day.
+5. **Consider meal pairings or combinations** when appropriate (e.g., Butter Chicken + Naan + Raita).  
    - Return **up to 3 recipes** for a single meal.
    - Only include pairings when they enhance the meal experience.
-5. If a recipe is suggested and not in the user’s saved collection:
+6. If a recipe is suggested and not in the user’s saved collection:
    - Set \`"ai_suggested": true\`
    - Return full recipe details in a \`"suggested_recipe"\` object
-6. If no recipe can be found or suggested:
+7. If no recipe can be found or suggested:
    - Return a **placeholder meal** with \`"is_placeholder": true\`
    - Prompt the user to add their own recipe in the app
 
@@ -139,7 +157,8 @@ Return only valid JSON that matches this structure:
   "data": {
     "days": [
       {
-        "day": 1,
+        "day": "Monday",
+        "date": "2025-06-24",
         "meals": [
           {
             "mealType": "breakfast",
@@ -205,7 +224,9 @@ Return only valid JSON that matches this structure:
       }
     ]
   }
-}`;
+}
+Return only valid JSON. Do not include any explanatory text.
+`;
 }
 // === Supabase Edge Function handler ===
 serve(async (req)=>{
