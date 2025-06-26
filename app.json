@@ -21,7 +21,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "server",
+      "output": "single",
       "favicon": "./assets/images/app_icon_android.png"
     },
     "plugins": ["expo-router", "expo-font", "expo-web-browser"],
