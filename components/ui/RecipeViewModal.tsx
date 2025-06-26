@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Heart, Clock, Users, Star, ChefHat, Flame, ExternalLink, BookOpen, Edit } from 'lucide-react-native';
+import { X, Heart, Clock, Users, Star, ChefHat, Flame, ExternalLink, BookOpen, CreditCard as Edit } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Button from './Button';
 import LoadingIndicator from './LoadingIndicator';
