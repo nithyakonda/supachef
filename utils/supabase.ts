@@ -5,11 +5,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
+// Create a dummy storage for server-side rendering
+const dummyStorage = {
+  getItem: async (key: string) => null,
+  setItem: async (key: string, value: string) => {},
+  removeItem: async (key: string) => {},
+};
+
+// Conditionally use AsyncStorage for client-side and dummy storage for server-side
+const getStorage = () => {
+  // Check if we're in a browser/client environment
+  if (typeof window !== 'undefined') {
+    return AsyncStorage;
+  }
+  // Use dummy storage for server-side rendering
+  return dummyStorage;
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
+    storage: getStorage(),
     autoRefreshToken: true,
-    persistSession: true,
+    persistSession: typeof window !== 'undefined', // Only persist sessions on client-side
     detectSessionInUrl: false,
   },
 });

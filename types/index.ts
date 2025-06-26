@@ -86,3 +86,68 @@ export interface PlanPreferences {
   preferredCuisines: string[];
   mealTypes: string[];
 }
+
+// AI Service Types
+export interface AIPreferences {
+  mealsPerDay: number;
+  daysToPlan: number;
+  dietaryRestrictions: string[];
+  prefersLeftovers: boolean;
+  needsLunchbox: boolean;
+}
+
+export interface AISavedRecipe {
+  id: string;
+  title: string;
+  imageUrl: string;
+  tags: string[];
+  description: string;
+}
+
+export interface AIPayload {
+  preferences: AIPreferences;
+  ingredients: string[];
+  savedRecipes: AISavedRecipe[];
+}
+
+export interface AIRecipeData {
+  recipeId: string;
+  recipeTitle: string;
+  imageUrl: string;
+  ai_suggested: boolean;
+  leftover: boolean;
+  lunchbox: boolean;
+  is_placeholder: boolean;
+  suggested_recipe?: {
+    title: string;
+    description: string;
+    ingredients: Array<{ item: string; quantity: string }>;
+    instructions: string[];
+    tags: string[];
+    image_url: string;
+    cooking_time: number;
+    servings: number;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+  };
+}
+
+export interface AIMealEntry {
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  recipes: AIRecipeData[];
+}
+
+export interface AIDayPlan {
+  day: string;
+  date: string;
+  meals: AIMealEntry[];
+}
+
+export interface AIData {
+  days: AIDayPlan[];
+}
+
+export interface AIResponse {
+  success: boolean;
+  data?: AIData;
+  error?: string;
+}

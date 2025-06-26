@@ -1,5 +1,5 @@
 import { supabase } from '@/utils/supabase';
-import { MealPlan, Meal, Recipe, MealRecipeData } from '@/types';
+import { MealPlan, Meal, Recipe, MealRecipeData, AIData, AIDayPlan, AIMealEntry } from '@/types';
 import type { Database } from '@/utils/supabase';
 
 type MealPlanRow = Database['public']['Tables']['meal_plans']['Row'];
@@ -198,6 +198,121 @@ export const mealPlanService = {
     }
 
     return transformMealPlanFromDB(planData, mealsData);
+  },
+
+  // Save meal plan from AI response
+  saveMealPlanFromAIResponse: async (aiData: AIData): Promise<void> => {
+    const userId = await mealPlanService.getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      // Process each day in the AI response
+      for (const dayPlan of aiData.days) {
+        const planDate = new Date(dayPlan.date);
+        const dateString = planDate.toISOString().split('T')[0];
+
+        // Check if meal plan already exists for this date
+        const { data: existingPlan, error: fetchError } = await supabase
+          .from('meal_plans')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('plan_date', dateString)
+          .single();
+
+        let mealPlanId: string;
+
+        if (existingPlan) {
+          // Delete existing meal entries for this plan
+          const { error: deleteError } = await supabase
+            .from('meal_entries')
+            .delete()
+            .eq('meal_plan_id', existingPlan.id);
+
+          if (deleteError) {
+            console.error('Error deleting existing meal entries:', deleteError);
+            throw new Error('Failed to update existing meal plan');
+          }
+
+          mealPlanId = existingPlan.id;
+        } else {
+          // Create new meal plan
+          const { data: newPlan, error: createError } = await supabase
+            .from('meal_plans')
+            .insert({
+              user_id: userId,
+              plan_date: dateString,
+              ingredients_used: [],
+              preferences_snapshot: {},
+            })
+            .select('id')
+            .single();
+
+          if (createError) {
+            console.error('Error creating meal plan:', createError);
+            throw new Error('Failed to create meal plan');
+          }
+
+          mealPlanId = newPlan.id;
+        }
+
+        // Create meal entries for this day
+        const mealEntries: MealEntryInsert[] = dayPlan.meals.map(aiMeal => {
+          // Convert AI recipes to meal_recipes format
+          const mealRecipes = aiMeal.recipes.map(aiRecipe => ({
+            recipeId: aiRecipe.recipeId,
+            title: aiRecipe.recipeTitle,
+            imageUrl: aiRecipe.imageUrl,
+            leftover: aiRecipe.leftover,
+            lunchbox: aiRecipe.lunchbox,
+            aiSuggested: aiRecipe.ai_suggested,
+            isPlaceholder: aiRecipe.is_placeholder,
+          }));
+
+          // Collect suggested recipes for the trigger to process
+          const suggestedRecipes = aiMeal.recipes
+            .filter(recipe => recipe.ai_suggested && recipe.suggested_recipe)
+            .map(recipe => ({
+              title: recipe.suggested_recipe!.title,
+              description: recipe.suggested_recipe!.description,
+              imageUrl: recipe.suggested_recipe!.image_url,
+              cookingTime: recipe.suggested_recipe!.cooking_time,
+              servings: recipe.suggested_recipe!.servings,
+              difficulty: recipe.suggested_recipe!.difficulty,
+              calories: 0, // Default value
+              ingredients: recipe.suggested_recipe!.ingredients.map(ing => ({
+                name: ing.item,
+                amount: ing.quantity,
+              })),
+              instructions: recipe.suggested_recipe!.instructions,
+              tags: recipe.suggested_recipe!.tags,
+              isFavorite: false,
+            }));
+
+          return {
+            meal_plan_id: mealPlanId,
+            meal_type: aiMeal.mealType,
+            meal_recipes: mealRecipes,
+            suggested_recipes: suggestedRecipes,
+            is_completed: false,
+          };
+        });
+
+        // Insert meal entries
+        const { error: insertError } = await supabase
+          .from('meal_entries')
+          .insert(mealEntries);
+
+        if (insertError) {
+          console.error('Error inserting meal entries:', insertError);
+          throw new Error('Failed to save meal entries');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving AI meal plan:', error);
+      throw error;
+    }
   },
 
   // Update meal completion status
