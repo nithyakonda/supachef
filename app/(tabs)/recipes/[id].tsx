@@ -8,9 +8,11 @@ import {
   Image,
   Alert,
   Dimensions,
+  TextInput,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Heart, CreditCard as Edit3, Trash2, Clock, Users, Star, ChefHat, Flame } from 'lucide-react-native';
+import { ChevronLeft, Heart, Pencil, Trash2, Clock, Users, Star, ChefHat, Flame, Plus, X, ExternalLink } from 'lucide-react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -19,11 +21,121 @@ import { recipeService } from '@/services/recipeService';
 
 const { width } = Dimensions.get('window');
 
+// Helper component for editable tags
+const EditableTags = ({ 
+  tags, 
+  onTagsChange, 
+  isEditing 
+}: { 
+  tags: string[], 
+  onTagsChange: (tags: string[]) => void,
+  isEditing: boolean 
+}) => {
+  const [newTag, setNewTag] = useState('');
+  const [showInput, setShowInput] = useState(false);
+
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      onTagsChange([...tags, newTag.trim()]);
+      setNewTag('');
+      setShowInput(false);
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    onTagsChange(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  if (!isEditing) {
+    return (
+      <View style={styles.tagsContainer}>
+        {tags.map((tag, index) => (
+          <View key={index} style={styles.tag}>
+            <Text style={styles.tagText}>{tag}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.editableTagsContainer}>
+      <View style={styles.tagsContainer}>
+        {tags.map((tag, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[styles.tag, styles.editableTag]}
+            onPress={() => removeTag(tag)}
+          >
+            <Text style={styles.tagText}>{tag}</Text>
+            <X size={12} color="#6B7280" style={styles.tagRemoveIcon} />
+          </TouchableOpacity>
+        ))}
+        
+        {showInput ? (
+          <View style={styles.tagInputContainer}>
+            <TextInput
+              style={styles.tagInput}
+              value={newTag}
+              onChangeText={setNewTag}
+              placeholder="New tag"
+              onSubmitEditing={addTag}
+              onBlur={() => {
+                if (newTag.trim()) addTag();
+                else setShowInput(false);
+              }}
+              autoFocus
+            />
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.addTagButton}
+            onPress={() => setShowInput(true)}
+          >
+            <Plus size={16} color="#F97966" />
+            <Text style={styles.addTagText}>Add Tag</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// Helper component for editable notes
+const EditableNotes = ({ 
+  notes, 
+  onNotesChange, 
+  isEditing 
+}: { 
+  notes: string, 
+  onNotesChange: (notes: string) => void,
+  isEditing: boolean 
+}) => {
+  if (!isEditing) {
+    return <Text style={styles.notesText}>{notes}</Text>;
+  }
+
+  return (
+    <TextInput
+      style={styles.notesInput}
+      value={notes}
+      onChangeText={onNotesChange}
+      placeholder="Add your notes here..."
+      multiline
+      textAlignVertical="top"
+    />
+  );
+};
+
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedTags, setEditedTags] = useState<string[]>([]);
+  const [editedNotes, setEditedNotes] = useState('');
 
   // Load recipe data when screen comes into focus
   const loadRecipe = async () => {
@@ -35,6 +147,8 @@ export default function RecipeDetailScreen() {
       if (recipeData) {
         setRecipe(recipeData);
         setIsFavorite(recipeData.isFavorite);
+        setEditedTags(recipeData.tags);
+        setEditedNotes(recipeData.notes || '');
       } else {
         Alert.alert('Error', 'Recipe not found');
         router.back();
@@ -60,7 +174,7 @@ export default function RecipeDetailScreen() {
 
   const handleEdit = () => {
     if (recipe) {
-      router.push(`/recipe/add-edit-recipe?recipeId=${recipe.id}`);
+      router.push(`/recipes/add-edit-recipe?recipeId=${recipe.id}`);
     }
   };
 
@@ -99,6 +213,47 @@ export default function RecipeDetailScreen() {
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to update favorite status');
+    }
+  };
+
+  const handleSourcePress = async () => {
+    if (!recipe?.source) return;
+    
+    try {
+      const supported = await Linking.canOpenURL(recipe.source);
+      if (supported) {
+        await Linking.openURL(recipe.source);
+      } else {
+        Alert.alert('Error', 'Cannot open this URL');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open URL');
+    }
+  };
+
+  const saveTags = async () => {
+    if (!recipe) return;
+    
+    try {
+      const updatedRecipe = { ...recipe, tags: editedTags };
+      await recipeService.updateRecipe(updatedRecipe);
+      setRecipe(updatedRecipe);
+      setIsEditingTags(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update tags');
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!recipe) return;
+    
+    try {
+      const updatedRecipe = { ...recipe, notes: editedNotes };
+      await recipeService.updateRecipe(updatedRecipe);
+      setRecipe(updatedRecipe);
+      setIsEditingNotes(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update notes');
     }
   };
 
@@ -179,10 +334,6 @@ export default function RecipeDetailScreen() {
                 />
               </TouchableOpacity>
               
-              <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
-                <Edit3 size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              
               <TouchableOpacity onPress={handleDelete} style={[styles.actionButton, styles.deleteButton]}>
                 <Trash2 size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -203,10 +354,9 @@ export default function RecipeDetailScreen() {
 
         {/* Content Section */}
         <View style={styles.contentSection}>
-          {/* Quick Stats */}
+          {/* Quick Stats - Only show stats with actual values */}
           <Card style={styles.statsCard}>
             <View style={styles.statsContainer}>
-              {/* Only show cooking time if it's greater than 0 */}
               {recipe.cookingTime > 0 && (
                 <>
                   <View style={styles.statItem}>
@@ -220,7 +370,6 @@ export default function RecipeDetailScreen() {
                 </>
               )}
               
-              {/* Only show servings if it's greater than 0 */}
               {recipe.servings > 0 && (
                 <>
                   <View style={styles.statItem}>
@@ -234,7 +383,6 @@ export default function RecipeDetailScreen() {
                 </>
               )}
               
-              {/* Always show difficulty */}
               <View style={styles.statItem}>
                 <View style={styles.statIcon}>
                   <ChefHat size={20} color="#F97966" />
@@ -245,7 +393,6 @@ export default function RecipeDetailScreen() {
                 </Text>
               </View>
               
-              {/* Only show calories if it's greater than 0 */}
               {recipe.calories > 0 && (
                 <>
                   <View style={styles.statDivider} />
@@ -269,17 +416,29 @@ export default function RecipeDetailScreen() {
             </Card>
           )}
 
-          {/* Tags */}
-          {recipe.tags.length > 0 && (
+          {/* Tags - Editable */}
+          {(recipe.tags.length > 0 || isEditingTags) && (
             <Card style={styles.tagsCard}>
-              <Text style={styles.sectionTitle}>Tags</Text>
-              <View style={styles.tagsContainer}>
-                {recipe.tags.map((tag, index) => (
-                  <View key={index} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Tags</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (isEditingTags) {
+                      saveTags();
+                    } else {
+                      setIsEditingTags(true);
+                    }
+                  }}
+                  style={styles.editButton}
+                >
+                  <Pencil size={16} color="#F97966" />
+                </TouchableOpacity>
               </View>
+              <EditableTags
+                tags={editedTags}
+                onTagsChange={setEditedTags}
+                isEditing={isEditingTags}
+              />
             </Card>
           )}
 
@@ -319,30 +478,49 @@ export default function RecipeDetailScreen() {
             </View>
           </Card>
 
-          {/* Notes */}
-          {recipe.notes && (
-            <Card style={styles.notesCard}>
-              <Text style={styles.sectionTitle}>Chef's Notes</Text>
-              <Text style={styles.notesText}>{recipe.notes}</Text>
-            </Card>
-          )}
+          {/* My Notes - Editable */}
+          <Card style={styles.notesCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>My Notes</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (isEditingNotes) {
+                    saveNotes();
+                  } else {
+                    setIsEditingNotes(true);
+                  }
+                }}
+                style={styles.editButton}
+              >
+                <Pencil size={16} color="#F97966" />
+              </TouchableOpacity>
+            </View>
+            <EditableNotes
+              notes={editedNotes}
+              onNotesChange={setEditedNotes}
+              isEditing={isEditingNotes}
+            />
+          </Card>
 
-          {/* Source */}
+          {/* Source - Clickable */}
           {recipe.source && (
             <Card style={styles.sourceCard}>
               <Text style={styles.sectionTitle}>Source</Text>
-              <Text style={styles.sourceText} numberOfLines={1}>
-                {recipe.source}
-              </Text>
+              <TouchableOpacity onPress={handleSourcePress} style={styles.sourceLink}>
+                <Text style={styles.sourceLinkText} numberOfLines={1}>
+                  {recipe.source}
+                </Text>
+                <ExternalLink size={16} color="#F97966" />
+              </TouchableOpacity>
             </Card>
           )}
         </View>
       </ScrollView>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - Edit (Pencil) */}
       <View style={styles.fabContainer}>
         <TouchableOpacity onPress={handleEdit} style={styles.fab}>
-          <Edit3 size={24} color="#FFFFFF" />
+          <Pencil size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -508,6 +686,17 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 12,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#FEF3F2',
+  },
   description: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
@@ -516,6 +705,9 @@ const styles = StyleSheet.create({
   },
   tagsCard: {
     padding: 20,
+  },
+  editableTagsContainer: {
+    flex: 1,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -528,10 +720,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     borderRadius: 16,
   },
+  editableTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3F2',
+    borderWidth: 1,
+    borderColor: '#F97966',
+  },
   tagText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
+  },
+  tagRemoveIcon: {
+    marginLeft: 4,
+  },
+  tagInputContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F97966',
+  },
+  tagInput: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#111827',
+    minWidth: 80,
+  },
+  addTagButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FEF3F2',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F97966',
+    borderStyle: 'dashed',
+  },
+  addTagText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#F97966',
+    marginLeft: 4,
   },
   ingredientsCard: {
     padding: 20,
@@ -608,13 +841,38 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontStyle: 'italic',
   },
+  notesInput: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    lineHeight: 24,
+    borderWidth: 1,
+    borderColor: '#F97966',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
   sourceCard: {
     padding: 20,
   },
-  sourceText: {
+  sourceLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  sourceLinkText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+    color: '#F97966',
+    flex: 1,
+    marginRight: 8,
   },
   fabContainer: {
     position: 'absolute',

@@ -25,6 +25,59 @@ import { recipeService } from '@/services/recipeService';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2; // 2 cards per row with margins
 
+// Helper component to render recipe stats conditionally
+const RecipeStats = ({ recipe }: { recipe: Recipe }) => {
+  const stats = [];
+  
+  // Only add stats that have actual values
+  if (recipe.cookingTime > 0) {
+    stats.push(
+      <View key="time" style={styles.statItem}>
+        <Clock size={14} color="#6B7280" />
+        <Text style={styles.statText}>{recipe.cookingTime} min</Text>
+      </View>
+    );
+  }
+  
+  if (recipe.servings > 0) {
+    stats.push(
+      <View key="servings" style={styles.statItem}>
+        <Users size={14} color="#6B7280" />
+        <Text style={styles.statText}>{recipe.servings} servings</Text>
+      </View>
+    );
+  }
+  
+  // Always show difficulty as it has a default value
+  stats.push(
+    <View key="difficulty" style={styles.statItem}>
+      <View style={[
+        styles.difficultyDot,
+        { backgroundColor: getDifficultyColor(recipe.difficulty) }
+      ]} />
+      <Text style={styles.statText}>{recipe.difficulty}</Text>
+    </View>
+  );
+  
+  // Only render stats container if we have stats to show
+  if (stats.length === 0) return null;
+  
+  return <View style={styles.recipeStats}>{stats}</View>;
+};
+
+const getDifficultyColor = (difficulty: string) => {
+  switch (difficulty) {
+    case 'Easy':
+      return '#10B981';
+    case 'Medium':
+      return '#F59E0B';
+    case 'Hard':
+      return '#EF4444';
+    default:
+      return '#6B7280';
+  }
+};
+
 export default function RecipesScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,19 +172,6 @@ export default function RecipesScreen() {
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy':
-        return '#10B981';
-      case 'Medium':
-        return '#F59E0B';
-      case 'Hard':
-        return '#EF4444';
-      default:
-        return '#6B7280';
-    }
   };
 
   const handleAddRecipe = () => {
@@ -229,23 +269,7 @@ export default function RecipesScreen() {
             </View>
           )}
 
-          <View style={styles.recipeStats}>
-            <View style={styles.statItem}>
-              <Clock size={14} color="#6B7280" />
-              <Text style={styles.statText}>{recipe.cookingTime} min</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Users size={14} color="#6B7280" />
-              <Text style={styles.statText}>{recipe.servings} servings</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={[
-                styles.difficultyDot,
-                { backgroundColor: getDifficultyColor(recipe.difficulty) }
-              ]} />
-              <Text style={styles.statText}>{recipe.difficulty}</Text>
-            </View>
-          </View>
+          <RecipeStats recipe={recipe} />
 
           <View style={styles.recipeTags}>
             {recipe.tags.slice(0, 2).map(tag => (
@@ -310,8 +334,9 @@ export default function RecipesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header - Centered */}
       <View style={styles.header}>
+        <View style={styles.headerSpacer} />
         <Text style={styles.title}>Recipe Book</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity 
@@ -531,14 +556,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
+  headerSpacer: {
+    width: 96, // Same width as headerActions to center the title
+  },
   title: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: '#111827',
+    textAlign: 'center',
   },
   headerActions: {
     flexDirection: 'row',
     gap: 8,
+    width: 96, // Fixed width to balance the header
   },
   headerButton: {
     width: 48,
