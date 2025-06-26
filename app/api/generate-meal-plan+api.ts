@@ -36,7 +36,6 @@ export async function POST(request: Request): Promise<Response> {
 
     // Call the Supabase Edge Function
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/meal-planner-ai`;
-    console.log("nkk", edgeFunctionUrl)
     
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
