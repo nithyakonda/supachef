@@ -13,7 +13,7 @@ import { Pencil, Plus, User, Sparkles } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import Chip from '../../components/ui/Chip';
+import LoadingIndicator from '../../components/ui/LoadingIndicator';
 import EditMealModal from '../../components/ui/EditMealModal';
 import { Meal, MealPlan, MealRecipeData } from '../../types';
 import { supabase } from '../../utils/supabase';
@@ -35,6 +35,7 @@ export default function HomeScreen() {
     mealIndex: number;
   } | null>(null);
   const [userFirstName, setUserFirstName] = useState<string>('');
+  const [userImageUri, setUserImageUri] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -53,6 +54,9 @@ export default function HomeScreen() {
           const fullName = user.user_metadata.full_name;
           const firstName = fullName.split(' ')[0];
           setUserFirstName(firstName);
+        }
+        if (user?.user_metadata?.profile_image_uri) {
+          setUserImageUri(user.user_metadata.profile_image_uri);
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -151,6 +155,27 @@ export default function HomeScreen() {
     setShowEditMealModal(true);
   };
 
+  const handleAddMeal = (dayIndex: number) => {
+    // Create a placeholder meal for adding new meal
+    const placeholderMeal: Meal = {
+      id: `placeholder-${Date.now()}`,
+      type: 'breakfast', // Default type, user can change in modal
+      mealRecipes: [{
+        recipeId: `placeholder-${Date.now()}`,
+        title: 'Your Recipe Here',
+        imageUrl: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg',
+        leftover: false,
+        lunchbox: false,
+        aiSuggested: false,
+        isPlaceholder: true,
+      }],
+      isCompleted: false,
+    };
+
+    setCurrentMealEditInfo({ meal: placeholderMeal, dayIndex, mealIndex: -1 });
+    setShowEditMealModal(true);
+  };
+
   const handleSaveEditedMeal = async (updatedMealRecipes: MealRecipeData[], newDayIndex?: number, newMealType?: string) => {
     if (!currentMealEditInfo) return;
 
@@ -163,25 +188,30 @@ export default function HomeScreen() {
       setWeeklyMealPlans(prevPlans => {
         const newPlans = [...prevPlans];
         
-        // Remove meal from original position
-        newPlans[originalDayIndex] = {
-          ...newPlans[originalDayIndex],
-          meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
-        };
+        // Remove meal from original position (if not adding new)
+        if (originalMealIndex >= 0) {
+          newPlans[originalDayIndex] = {
+            ...newPlans[originalDayIndex],
+            meals: newPlans[originalDayIndex].meals.filter((_, index) => index !== originalMealIndex)
+          };
+        }
 
-        // Create updated meal with new recipe data
-        const updatedMeal: Meal = {
-          ...currentMealEditInfo.meal,
-          type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-          mealRecipes: updatedMealRecipes,
-          id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
-        };
+        // Only add meal if we have recipes
+        if (updatedMealRecipes.length > 0) {
+          // Create updated meal with new recipe data
+          const updatedMeal: Meal = {
+            ...currentMealEditInfo.meal,
+            type: targetMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+            mealRecipes: updatedMealRecipes,
+            id: `${targetDayIndex}-${targetMealType}-${Date.now()}` // Generate new ID to avoid conflicts
+          };
 
-        // Add meal to target position
-        newPlans[targetDayIndex] = {
-          ...newPlans[targetDayIndex],
-          meals: [...newPlans[targetDayIndex].meals, updatedMeal]
-        };
+          // Add meal to target position
+          newPlans[targetDayIndex] = {
+            ...newPlans[targetDayIndex],
+            meals: [...newPlans[targetDayIndex].meals, updatedMeal]
+          };
+        }
 
         return newPlans;
       });
@@ -208,6 +238,7 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
+          <LoadingIndicator size="large" />
           <Text style={styles.loadingText}>Loading your meal plans...</Text>
         </View>
       </SafeAreaView>
@@ -238,7 +269,14 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.profileButton}>
-            <User size={24} color="#F97966" />
+            {userImageUri ? (
+              <Image
+                source={{ uri: userImageUri }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <User size={24} color="#F97966" />
+            )}
           </TouchableOpacity>
           <View style={styles.greetingContainer}>
             <Text style={styles.greeting}>
@@ -375,7 +413,7 @@ export default function HomeScreen() {
                     <Text style={styles.noMealsText}>No meals planned for this day</Text>
                     <Button
                       title="Add Meal"
-                      onPress={() => {}}
+                      onPress={() => handleAddMeal(dayIndex)}
                       variant="outline"
                       style={styles.addMealButton}
                     />
@@ -419,6 +457,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
+    marginTop: 16,
   },
   errorContainer: {
     flex: 1,
@@ -449,6 +488,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3F2',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   greetingContainer: {
     flex: 1,

@@ -5,58 +5,50 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   User, 
-  Settings as SettingsIcon, 
-  Info, 
-  ChevronRight,
-  Camera,
-  Bell,
-  Shield,
   Utensils,
-  LogOut
+  LogOut,
+  ChevronRight
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import ProfileImagePicker from '@/components/ui/ProfileImagePicker';
+import ProfileEditModal from '@/components/ui/ProfileEditModal';
+import MealPlanPreferencesModal from '@/components/ui/MealPlanPreferencesModal';
 import { supabase } from '@/utils/supabase';
-
-interface SettingsItem {
-  id: string;
-  title: string;
-  subtitle?: string;
-  icon: React.ReactNode;
-  onPress: () => void;
-}
 
 export default function SettingsScreen() {
   const [userFullName, setUserFullName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
+  const [userImageUri, setUserImageUri] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
 
   // Load user data
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserEmail(user.email || '');
-          setUserFullName(user.user_metadata?.full_name || '');
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadUserData();
   }, []);
+
+  const loadUserData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || '');
+        setUserFullName(user.user_metadata?.full_name || '');
+        setUserImageUri(user.user_metadata?.profile_image_uri || '');
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -94,43 +86,34 @@ export default function SettingsScreen() {
     );
   };
 
-  const settingsItems: SettingsItem[] = [
-    {
-      id: 'profile',
-      title: 'Profile',
-      subtitle: 'Update your personal information',
-      icon: <User size={20} color="#6B7280" />,
-      onPress: () => {},
-    },
-    {
-      id: 'preferences',
-      title: 'Meal Plan Preferences',
-      subtitle: 'Dietary restrictions, cuisines, and more',
-      icon: <Utensils size={20} color="#6B7280" />,
-      onPress: () => {},
-    },
-    {
-      id: 'notifications',
-      title: 'Notifications',
-      subtitle: 'Meal reminders and cooking alerts',
-      icon: <Bell size={20} color="#6B7280" />,
-      onPress: () => {},
-    },
-    {
-      id: 'privacy',
-      title: 'Privacy & Security',
-      subtitle: 'Data and account security settings',
-      icon: <Shield size={20} color="#6B7280" />,
-      onPress: () => {},
-    },
-    {
-      id: 'about',
-      title: 'About',
-      subtitle: 'App version and information',
-      icon: <Info size={20} color="#6B7280" />,
-      onPress: () => {},
-    },
-  ];
+  const handleProfileImageUpdate = async (imageUri: string) => {
+    try {
+      // Update user metadata with new image URI
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          profile_image_uri: imageUri,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setUserImageUri(imageUri);
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile image:', error);
+      Alert.alert('Error', 'Failed to update profile picture. Please try again.');
+    }
+  };
+
+  const handleProfileUpdated = (name: string, email: string, imageUri?: string) => {
+    setUserFullName(name);
+    setUserEmail(email);
+    if (imageUri !== undefined) {
+      setUserImageUri(imageUri);
+    }
+  };
 
   const getDisplayName = () => {
     if (userFullName) {
@@ -146,59 +129,71 @@ export default function SettingsScreen() {
     return 'Complete your profile setup';
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading settings...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
+        {/* Header - Centered */}
         <View style={styles.header}>
+          <View style={styles.headerSpacer} />
           <Text style={styles.title}>Settings</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Profile Section */}
+        {/* Profile Section - Interactive */}
         <View style={styles.profileSection}>
           <Card style={styles.profileCard}>
-            <View style={styles.profileContent}>
-              <View style={styles.profileImageContainer}>
-                <View style={styles.profileImage}>
-                  <User size={32} color="#F97966" />
-                </View>
-                <TouchableOpacity style={styles.cameraButton}>
-                  <Camera size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
+            <TouchableOpacity
+              style={styles.profileContent}
+              onPress={() => setShowProfileModal(true)}
+              activeOpacity={0.7}
+            >
+              <ProfileImagePicker
+                currentImageUri={userImageUri}
+                onImageSelected={handleProfileImageUpdate}
+                size={80}
+              />
               
               <View style={styles.profileInfo}>
                 <Text style={styles.profileName}>{getDisplayName()}</Text>
                 <Text style={styles.profileEmail}>{getDisplayEmail()}</Text>
               </View>
-            </View>
+
+              <ChevronRight size={20} color="#9CA3AF" />
+            </TouchableOpacity>
           </Card>
         </View>
 
         {/* Settings Items */}
         <View style={styles.settingsSection}>
-          {settingsItems.map((item) => (
-            <Card key={item.id} style={styles.settingsCard}>
-              <TouchableOpacity 
-                style={styles.settingsItem}
-                onPress={item.onPress}
-                activeOpacity={0.7}
-              >
-                <View style={styles.settingsItemContent}>
-                  <View style={styles.settingsIcon}>
-                    {item.icon}
-                  </View>
-                  <View style={styles.settingsText}>
-                    <Text style={styles.settingsTitle}>{item.title}</Text>
-                    {item.subtitle && (
-                      <Text style={styles.settingsSubtitle}>{item.subtitle}</Text>
-                    )}
-                  </View>
+          {/* Meal Plan Preferences - Interactive */}
+          <Card style={styles.settingsCard}>
+            <TouchableOpacity 
+              style={styles.settingsItem}
+              onPress={() => setShowPreferencesModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsItemContent}>
+                <View style={styles.settingsIcon}>
+                  <Utensils size={20} color="#6B7280" />
                 </View>
-                <ChevronRight size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            </Card>
-          ))}
+                <View style={styles.settingsText}>
+                  <Text style={styles.settingsTitle}>Meal Plan Preferences</Text>
+                  <Text style={styles.settingsSubtitle}>Dietary restrictions, cuisines, and more</Text>
+                </View>
+              </View>
+              <ChevronRight size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </Card>
         </View>
 
         {/* Logout Section */}
@@ -236,6 +231,25 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Profile Edit Modal */}
+      <ProfileEditModal
+        visible={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        currentName={userFullName}
+        currentEmail={userEmail}
+        currentImageUri={userImageUri}
+        onProfileUpdated={handleProfileUpdated}
+      />
+
+      {/* Meal Plan Preferences Modal */}
+      <MealPlanPreferencesModal
+        visible={showPreferencesModal}
+        onClose={() => setShowPreferencesModal(false)}
+        onPreferencesUpdated={() => {
+          // Optionally refresh any data that depends on preferences
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -245,14 +259,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+  },
+  headerSpacer: {
+    width: 40, // Balance the header for centering
   },
   title: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: '#111827',
+    textAlign: 'center',
   },
   profileSection: {
     paddingHorizontal: 20,
@@ -265,33 +296,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  profileImageContainer: {
-    position: 'relative',
-    marginRight: 16,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FEF3F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F97966',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
   profileInfo: {
     flex: 1,
+    marginLeft: 16,
   },
   profileName: {
     fontSize: 20,
