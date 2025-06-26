@@ -9,12 +9,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Pencil, Plus, User, Sparkles } from 'lucide-react-native';
+import { Pencil, Plus, User, Sparkles, Eye } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import LoadingIndicator from '../../components/ui/LoadingIndicator';
 import EditMealModal from '../../components/ui/EditMealModal';
+import RecipeViewModal from '../../components/ui/RecipeViewModal';
 import { Meal, MealPlan, MealRecipeData } from '../../types';
 import { supabase } from '../../utils/supabase';
 import { mealPlanService } from '../../services/mealPlanService';
@@ -29,11 +30,13 @@ export default function HomeScreen() {
     return today.getDay();
   });
   const [showEditMealModal, setShowEditMealModal] = useState(false);
+  const [showRecipeViewModal, setShowRecipeViewModal] = useState(false);
   const [currentMealEditInfo, setCurrentMealEditInfo] = useState<{
     meal: Meal;
     dayIndex: number;
     mealIndex: number;
   } | null>(null);
+  const [currentRecipeViewData, setCurrentRecipeViewData] = useState<MealRecipeData | null>(null);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const [userImageUri, setUserImageUri] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -155,6 +158,11 @@ export default function HomeScreen() {
     setShowEditMealModal(true);
   };
 
+  const handleViewRecipe = (mealRecipeData: MealRecipeData) => {
+    setCurrentRecipeViewData(mealRecipeData);
+    setShowRecipeViewModal(true);
+  };
+
   const handleAddMeal = (dayIndex: number) => {
     // Create a placeholder meal for adding new meal
     const placeholderMeal: Meal = {
@@ -232,6 +240,11 @@ export default function HomeScreen() {
   const handleCloseEditMealModal = () => {
     setShowEditMealModal(false);
     setCurrentMealEditInfo(null);
+  };
+
+  const handleCloseRecipeViewModal = () => {
+    setShowRecipeViewModal(false);
+    setCurrentRecipeViewData(null);
   };
 
   if (loading) {
@@ -358,15 +371,28 @@ export default function HomeScreen() {
                                 <View style={styles.mealContent}>
                                   {meal.mealRecipes && meal.mealRecipes.length > 0 && (
                                     <View style={styles.recipePreview}>
-                                      <Image
-                                        source={{ uri: meal.mealRecipes[0].imageUrl }}
-                                        style={styles.recipeImage}
-                                      />
+                                      <TouchableOpacity 
+                                        onPress={() => handleViewRecipe(meal.mealRecipes![0])}
+                                        style={styles.recipeImageContainer}
+                                      >
+                                        <Image
+                                          source={{ uri: meal.mealRecipes[0].imageUrl }}
+                                          style={styles.recipeImage}
+                                        />
+                                        <View style={styles.viewOverlay}>
+                                          <Eye size={16} color="#FFFFFF" />
+                                        </View>
+                                      </TouchableOpacity>
                                       <View style={styles.recipeTextAndButtons}>
                                         <View style={styles.titleAndEditContainer}>
-                                          <Text style={styles.recipeTitle}>
-                                            {meal.mealRecipes[0].title}
-                                          </Text>
+                                          <TouchableOpacity 
+                                            onPress={() => handleViewRecipe(meal.mealRecipes![0])}
+                                            style={styles.recipeTitleContainer}
+                                          >
+                                            <Text style={styles.recipeTitle}>
+                                              {meal.mealRecipes[0].title}
+                                            </Text>
+                                          </TouchableOpacity>
                                           <TouchableOpacity
                                             style={styles.editTitleButton}
                                             onPress={() => handleEditMeal(meal, dayIndex, originalMealIndex)}
@@ -435,6 +461,16 @@ export default function HomeScreen() {
           allMealTypes={allMealTypes}
           onSave={handleSaveEditedMeal}
           onClose={handleCloseEditMealModal}
+        />
+      )}
+
+      {/* Recipe View Modal */}
+      {currentRecipeViewData && (
+        <RecipeViewModal
+          visible={showRecipeViewModal}
+          mealRecipeData={currentRecipeViewData}
+          fromMealPlan={true}
+          onClose={handleCloseRecipeViewModal}
         />
       )}
     </SafeAreaView>
@@ -601,11 +637,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  recipeImageContainer: {
+    position: 'relative',
+  },
   recipeImage: {
     width: 80,
     height: 80,
     borderRadius: 12,
     marginRight: 16,
+  },
+  viewOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 16,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.8,
   },
   recipeTextAndButtons: {
     flex: 1,
@@ -619,13 +670,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 22, // Match the lineHeight of the text
   },
+  recipeTitleContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
   recipeTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
     lineHeight: 22,
-    flex: 1,
-    marginRight: 8,
   },
   editTitleButton: {
     width: 24,
