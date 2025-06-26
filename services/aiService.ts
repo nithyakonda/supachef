@@ -16,8 +16,6 @@ export const aiService = {
         body: JSON.stringify(payload),
       });
 
-      console.log("nkk",response)
-
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
