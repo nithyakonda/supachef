@@ -2,6 +2,7 @@ import { AIPayload, AIResponse } from '@/types';
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    console.log("nkk 1")
     // Parse the request body
     const payload: AIPayload = await request.json();
 
