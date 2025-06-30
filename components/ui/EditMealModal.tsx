@@ -233,7 +233,7 @@ export default function EditMealModal({
           <ScrollView style={styles.contentScrollView} showsVerticalScrollIndicator={false}>
             {/* 1. Selected Recipe Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Selected Recipe</Text>
+              <Text style={styles.sectionTitle}>Select Recipe</Text>
               
               {/* Search Bar */}
               <View style={styles.searchInputContainer}>
