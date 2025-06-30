@@ -11,6 +11,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { supabase } from '@/utils/supabase';
+import { preferenceService } from '@/services/preferenceService';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -21,6 +22,8 @@ export default function RootLayout() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
+  const [isOnboardingCheckComplete, setIsOnboardingCheckComplete] = useState(false);
 
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
@@ -54,26 +57,52 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Check onboarding completion status for authenticated users
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      if (isAuthChecked && isAuthenticated) {
+        try {
+          const userPreferences = await preferenceService.getUserPreferences();
+          setIsOnboardingComplete(!!userPreferences);
+        } catch (error) {
+          console.error('Error checking onboarding status:', error);
+          setIsOnboardingComplete(false);
+        } finally {
+          setIsOnboardingCheckComplete(true);
+        }
+      } else if (isAuthChecked && !isAuthenticated) {
+        // If not authenticated, skip onboarding check
+        setIsOnboardingCheckComplete(true);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [isAuthenticated, isAuthChecked]);
+
   // Handle authentication-based navigation
   useEffect(() => {
-    if (isAuthChecked) {
+    if (isAuthChecked && isOnboardingCheckComplete) {
       if (isAuthenticated) {
-        router.replace('/(tabs)');
+        if (isOnboardingComplete) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/onboarding/preferences');
+        }
       } else {
         router.replace('/onboarding');
       }
     }
-  }, [isAuthenticated, isAuthChecked, router]);
+  }, [isAuthenticated, isAuthChecked, isOnboardingComplete, isOnboardingCheckComplete, router]);
 
-  // Hide splash screen when both fonts and auth check are complete
+  // Hide splash screen when fonts are loaded, auth is checked, and onboarding status is determined
   useEffect(() => {
-    if ((fontsLoaded || fontError) && isAuthChecked) {
+    if ((fontsLoaded || fontError) && isAuthChecked && isOnboardingCheckComplete) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError, isAuthChecked]);
+  }, [fontsLoaded, fontError, isAuthChecked, isOnboardingCheckComplete]);
 
-  // Keep splash screen visible until both fonts and auth are ready
-  if ((!fontsLoaded && !fontError) || !isAuthChecked) {
+  // Keep splash screen visible until all checks are complete
+  if ((!fontsLoaded && !fontError) || !isAuthChecked || !isOnboardingCheckComplete) {
     return null;
   }
 
