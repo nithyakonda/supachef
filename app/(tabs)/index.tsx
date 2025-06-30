@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pencil, Plus, User, Sparkles } from 'lucide-react-native';
@@ -250,6 +251,27 @@ export default function HomeScreen() {
     setCurrentRecipeViewData(null);
   };
 
+  const handleBoltBadgePress = async () => {
+    try {
+      const supported = await Linking.canOpenURL('https://bolt.new/');
+      if (supported) {
+        await Linking.openURL('https://bolt.new/');
+      } else {
+        showAlert({
+          title: 'Cannot Open Link',
+          message: 'Unable to open bolt.new in your browser.',
+          type: 'error',
+        });
+      }
+    } catch (error) {
+      showAlert({
+        title: 'Error',
+        message: 'Failed to open bolt.new. Please try again.',
+        type: 'error',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -315,7 +337,17 @@ export default function HomeScreen() {
               Hello, {userFirstName || 'Chef'}!
             </Text>
           </View>
-          <View style={styles.placeholder} />
+          <TouchableOpacity 
+            style={styles.boltBadge}
+            onPress={handleBoltBadgePress}
+            activeOpacity={0.8}
+          >
+            <Image
+              source={require('@/assets/images/bolt_badge.png')}
+              style={styles.boltBadgeImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Week Calendar */}
@@ -566,8 +598,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: '#111827',
   },
-  placeholder: {
+  boltBadge: {
     width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boltBadgeImage: {
+    width: 40,
+    height: 40,
   },
   weekContainer: {
     flexDirection: 'row',
