@@ -8,26 +8,48 @@ export const aiService = {
    */
   generateMealPlanAI: async (payload: AIPayload): Promise<AIResponse> => {
     try {
-      const response = await fetch('/api/generate-meal-plan', {
+      // Get Supabase configuration from environment
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration is missing. Please check your environment variables.');
+      }
+
+      // Construct the direct URL to the Supabase Edge Function
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/meal-planner-ai`;
+
+      const response = await fetch(edgeFunctionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        console.error('Edge function error:', errorText);
+        throw new Error(`AI service error: ${response.status} ${response.statusText}`);
       }
 
-      const result: AIResponse = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'AI meal planning failed');
-      }
+      // Parse and return the AI response with robust error handling
+      try {
+        const aiResponse: AIResponse = await response.json();
+        
+        if (!aiResponse.success) {
+          throw new Error(aiResponse.error || 'AI meal planning failed');
+        }
 
-      return result;
+        return aiResponse;
+      } catch (jsonError) {
+        // If JSON parsing fails, get the raw response text
+        const responseText = await response.text();
+        console.error('JSON parsing failed. Response was:', responseText);
+        
+        throw new Error('Edge function returned invalid JSON response. This usually indicates a configuration issue with the AI service or missing environment variables.');
+      }
     } catch (error) {
       console.error('Error generating meal plan:', error);
       throw new Error(
