@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, Camera, X, Sparkles } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -427,7 +428,11 @@ export default function PlannerScreen() {
         {/* AI Sous-Chef Banner */}
         <View style={styles.aiBanner}>
           <View style={styles.aiIconContainer}>
-            <Sparkles size={24} color="#F97966" />
+            <Image
+              source={require('@/assets/images/sous-chef.png')}
+              style={styles.sousChefImage}
+              resizeMode="contain"
+            />
           </View>
           <View style={styles.aiBannerContent}>
             <Text style={styles.aiBannerTitle}>Your AI Sous-Chef</Text>
@@ -441,6 +446,7 @@ export default function PlannerScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Add Ingredients</Text>
           
+          {/* Buttons are commented out until camera feature is implemented */}
           {/* <View style={styles.ingredientButtons}>
             <Button
               title="Take a Photo"
@@ -605,13 +611,25 @@ const styles = StyleSheet.create({
     borderColor: '#F97966',
   },
   aiIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F97966',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sousChefImage: {
+    width: 48,
+    height: 48,
   },
   aiBannerContent: {
     flex: 1,

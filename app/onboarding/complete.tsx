@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -24,7 +25,11 @@ export default function CompleteScreen() {
         {/* Animated Icon */}
         <View style={styles.iconContainer}>
           <View style={styles.mainIcon}>
-            <ChefHat size={48} color="#F97966" />
+            <Image
+              source={require('@/assets/images/sous-chef.png')}
+              style={styles.sousChefImage}
+              resizeMode="contain"
+            />
           </View>
           <View style={styles.sparkleContainer}>
             <Sparkles size={24} color="#F59E0B" style={styles.sparkle1} />
@@ -103,6 +108,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: '#F97966',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  sousChefImage: {
+    width: 64,
+    height: 64,
   },
   sparkleContainer: {
     position: 'absolute',
