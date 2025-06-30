@@ -441,7 +441,7 @@ export default function PlannerScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Add Ingredients</Text>
           
-          <View style={styles.ingredientButtons}>
+          {/* <View style={styles.ingredientButtons}>
             <Button
               title="Take a Photo"
               onPress={handleTakePhoto}
@@ -456,7 +456,7 @@ export default function PlannerScreen() {
               style={[styles.ingredientButton, styles.manualButton]}
               textStyle={styles.manualButtonText}
             />
-          </View>
+          </View> */}
 
           {manualIngredients ? (
             <Card style={styles.ingredientsPreview}>
