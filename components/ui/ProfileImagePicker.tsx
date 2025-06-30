@@ -115,6 +115,7 @@ export default function ProfileImagePicker({
         style={[styles.imageContainer, { width: size, height: size }]}
         onPress={showImageOptions}
         disabled={isLoading}
+        activeOpacity={0.8}
       >
         {currentImageUri ? (
           <Image
@@ -127,11 +128,22 @@ export default function ProfileImagePicker({
           </View>
         )}
         
-        <View style={styles.cameraButton}>
+        {/* Camera button overlay */}
+        <View style={[styles.cameraButton, { 
+          width: size * 0.35, 
+          height: size * 0.35,
+          borderRadius: size * 0.175,
+          bottom: -2,
+          right: -2,
+        }]}>
           {isLoading ? (
-            <View style={styles.loadingDot} />
+            <View style={[styles.loadingDot, { 
+              width: size * 0.15, 
+              height: size * 0.15,
+              borderRadius: size * 0.075,
+            }]} />
           ) : (
-            <Camera size={16} color="#FFFFFF" />
+            <Camera size={size * 0.2} color="#FFFFFF" />
           )}
         </View>
       </TouchableOpacity>
@@ -146,7 +158,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     borderRadius: 50,
-    overflow: 'hidden',
+    overflow: 'visible', // Changed from 'hidden' to 'visible' to allow camera button to overlay
   },
   profileImage: {
     borderRadius: 50,
@@ -161,21 +173,24 @@ const styles = StyleSheet.create({
   },
   cameraButton: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
     backgroundColor: '#F97966',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
+    // Enhanced shadow for better visibility
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    // Ensure it's above other elements
+    zIndex: 10,
   },
   loadingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
     backgroundColor: '#FFFFFF',
     opacity: 0.7,
   },
