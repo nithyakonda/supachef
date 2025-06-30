@@ -48,6 +48,10 @@ export default function EditMealModal({
 
   // Check if the current meal is a placeholder meal
   const isPlaceholderMeal = meal.mealRecipes && meal.mealRecipes.length > 0 && meal.mealRecipes[0].isPlaceholder;
+  
+  // Check if this is an "Add Meal" action (no existing meal recipes)
+  const isAddingNewMeal = !meal.mealRecipes || meal.mealRecipes.length === 0 || 
+    (meal.mealRecipes.length === 1 && meal.mealRecipes[0].isPlaceholder && meal.mealRecipes[0].title === 'Your Recipe Here');
 
   // Load all recipes from Supabase
   const loadRecipes = async () => {
@@ -67,7 +71,7 @@ export default function EditMealModal({
     if (visible) {
       loadRecipes();
       
-      if (meal.mealRecipes && meal.mealRecipes.length > 0) {
+      if (meal.mealRecipes && meal.mealRecipes.length > 0 && !isAddingNewMeal) {
         // Find the recipe from all recipes based on the first meal recipe
         const firstMealRecipe = meal.mealRecipes[0];
         const foundRecipe = allRecipes.find(recipe => recipe.id === firstMealRecipe.recipeId);
@@ -86,6 +90,7 @@ export default function EditMealModal({
         setIsLeftover(firstMealRecipe.leftover || false);
         setIsLunchbox(firstMealRecipe.lunchbox || false);
       } else {
+        // For new meals, reset everything
         setSelectedRecipe(null);
         setSearchQuery('');
         setCustomTitle('');
@@ -95,7 +100,7 @@ export default function EditMealModal({
       setSelectedDayIndex(currentDayIndex);
       setSelectedMealType(meal.type);
     }
-  }, [visible, meal, currentDayIndex]);
+  }, [visible, meal, currentDayIndex, isAddingNewMeal]);
 
   // Filter recipes based on search query
   const filteredRecipes = allRecipes.filter(recipe =>
@@ -167,7 +172,7 @@ export default function EditMealModal({
     }
 
     // For placeholder meals, don't allow moving to different day/meal type
-    if (isPlaceholderMeal) {
+    if (isPlaceholderMeal && !isAddingNewMeal) {
       onSave(updatedMealRecipes, currentDayIndex, meal.type);
     } else {
       onSave(updatedMealRecipes, selectedDayIndex, selectedMealType);
@@ -177,7 +182,7 @@ export default function EditMealModal({
   const handleDeleteRecipeFromMeal = () => {
     // Remove the current recipe from the meal by passing an empty array
     // This will signal to the parent component to remove this meal entry
-    if (isPlaceholderMeal) {
+    if (isPlaceholderMeal && !isAddingNewMeal) {
       onSave([], currentDayIndex, meal.type);
     } else {
       onSave([], selectedDayIndex, selectedMealType);
@@ -198,6 +203,14 @@ export default function EditMealModal({
   const showSuggestions = searchQuery.length > 0 && !selectedRecipe && filteredRecipes.length > 0;
   const showCustomPreview = searchQuery.length > 0 && !selectedRecipe && customTitle.trim().length > 0 && !isPlaceholderMeal;
 
+  // Determine the modal title based on the action
+  const getModalTitle = () => {
+    if (isAddingNewMeal) {
+      return 'Add Meal';
+    }
+    return `Edit ${meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}`;
+  };
+
   return (
     <Modal
       visible={visible}
@@ -210,7 +223,7 @@ export default function EditMealModal({
           {/* Header */}
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              Edit {meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}
+              {getModalTitle()}
             </Text>
             <TouchableOpacity onPress={handleCancel} style={styles.closeButton}>
               <X size={24} color="#6B7280" />
@@ -289,7 +302,7 @@ export default function EditMealModal({
               )}
             </View>
 
-            {/* 2. Move to Day Section - Hidden for placeholder meals */}
+            {/* 2. Move to Day Section - Hidden for placeholder meals and when adding new meals to current day */}
             {!isPlaceholderMeal && (
               <View style={styles.sectionContainer}>
                 <Text style={styles.sectionTitle}>Move to Day</Text>
@@ -306,10 +319,10 @@ export default function EditMealModal({
               </View>
             )}
 
-            {/* 3. Move to Meal Section - Hidden for placeholder meals */}
-            {!isPlaceholderMeal && (
+            {/* 3. Meal Type Selection - Always show for new meals, hidden for existing placeholder meals */}
+            {(isAddingNewMeal || !isPlaceholderMeal) && (
               <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>Move to Meal</Text>
+                <Text style={styles.sectionTitle}>Meal Type</Text>
                 <View style={styles.chipsContainer}>
                   {allMealTypes.map((mealType) => (
                     <Chip
@@ -343,13 +356,15 @@ export default function EditMealModal({
 
           {/* Actions */}
           <View style={styles.modalActions}>
-            <Button
-              title="Delete"
-              onPress={handleDeleteRecipeFromMeal}
-              variant="outline"
-              style={[styles.modalButton, styles.deleteButton]}
-              textStyle={styles.deleteButtonText}
-            />
+            {!isAddingNewMeal && (
+              <Button
+                title="Delete"
+                onPress={handleDeleteRecipeFromMeal}
+                variant="outline"
+                style={[styles.modalButton, styles.deleteButton]}
+                textStyle={styles.deleteButtonText}
+              />
+            )}
             <Button
               title="Save"
               onPress={handleSave}
