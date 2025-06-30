@@ -8,6 +8,11 @@
     "scheme": "supachef",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#F97966"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.supachef.app"
@@ -17,16 +22,31 @@
         "foregroundImage": "./assets/images/app_icon_android.png",
         "backgroundColor": "#F97966"
       },
-      "package": "com.supachef.app"
+      "package": "com.supachef.app",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",
       "output": "server",
       "favicon": "./assets/images/app_icon_android.png"
     },
-    "plugins": ["expo-router", "expo-font", "expo-web-browser"],
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser"
+    ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ecec2d49-15d2-465c-ac27-4717282b22d2"
+      }
     }
   }
 }
