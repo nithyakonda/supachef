@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react-native';
+import { TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Circle as XCircle, Info } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
