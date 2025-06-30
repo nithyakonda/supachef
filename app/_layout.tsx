@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useFonts } from 'expo-font';
@@ -18,6 +18,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   useFrameworkReady();
 
+  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
 
@@ -53,6 +54,17 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Handle authentication-based navigation
+  useEffect(() => {
+    if (isAuthChecked) {
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/onboarding');
+      }
+    }
+  }, [isAuthenticated, isAuthChecked, router]);
+
   // Hide splash screen when both fonts and auth check are complete
   useEffect(() => {
     if ((fontsLoaded || fontError) && isAuthChecked) {
@@ -68,14 +80,8 @@ export default function RootLayout() {
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen 
-          name="onboarding" 
-          redirect={isAuthenticated ? '/(tabs)' : undefined}
-        />
-        <Stack.Screen 
-          name="(tabs)" 
-          redirect={!isAuthenticated ? '/onboarding' : undefined}
-        />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
