@@ -26,35 +26,27 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Logo/Icon */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logo}>
+        <View style={styles.topSection}>
+          {/* Logo & App Name */}
+          <View style={styles.logoContainer}>
             <Image
               source={require('@/assets/images/app_icon_android.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
+            <Text style={styles.appName}>SupaChef</Text>
           </View>
-          <Text style={styles.appName}>SupaChef</Text>
+
+          {/* Text Content */}
+          <View style={styles.textContent}>
+            <Text style={styles.subtitle}>Your AI Sous-Chef Awaits</Text>
+            <Text style={styles.description}>
+              Plan meals effortlessly, save recipes from anywhere, and let AI help you create the perfect weekly menu tailored to your taste and lifestyle.
+            </Text>
+          </View>
         </View>
 
-        {/* Hero Image */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg' }}
-            style={styles.heroImage}
-          />
-        </View>
-
-        {/* Content */}
-        <View style={styles.textContent}>
-          <Text style={styles.title}>Your AI Sous-Chef Awaits</Text>
-          <Text style={styles.description}>
-            Plan meals effortlessly, save recipes from anywhere, and let AI help you create the perfect weekly menu tailored to your taste.
-          </Text>
-        </View>
-
-        {/* Action Button */}
+        {/* Anchored Action Section */}
         <View style={styles.actionContainer}>
           <Button
             title="Get Started"
@@ -65,8 +57,7 @@ export default function OnboardingScreen() {
           />
           <TouchableOpacity onPress={handleSignIn}>
             <Text style={styles.loginText}>
-              Already have an account?{' '}
-              <Text style={styles.loginLink}>Sign In</Text>
+              Already have an account? <Text style={styles.loginLink}>Sign In</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -83,7 +74,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 32,
+    justifyContent: 'space-between', 
+    paddingBottom: 32, 
+    paddingTop: 64,
   },
   logoContainer: {
     alignItems: 'center',
@@ -122,6 +115,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 34,
+  },
+  subtitle: {
+    fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: '#111827',
     textAlign: 'center',
