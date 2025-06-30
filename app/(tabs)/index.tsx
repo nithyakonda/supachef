@@ -16,6 +16,8 @@ import Button from '../../components/ui/Button';
 import LoadingIndicator from '../../components/ui/LoadingIndicator';
 import EditMealModal from '../../components/ui/EditMealModal';
 import RecipeViewModal from '../../components/ui/RecipeViewModal';
+import ThemedAlert from '../../components/ui/ThemedAlert';
+import { useThemedAlert } from '../../hooks/useThemedAlert';
 import { Meal, MealPlan, MealRecipeData } from '../../types';
 import { supabase } from '../../utils/supabase';
 import { mealPlanService } from '../../services/mealPlanService';
@@ -42,6 +44,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const allMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -254,6 +257,14 @@ export default function HomeScreen() {
           <LoadingIndicator size="large" />
           <Text style={styles.loadingText}>Loading your meal plans...</Text>
         </View>
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     );
   }
@@ -270,6 +281,14 @@ export default function HomeScreen() {
             style={styles.retryButton}
           />
         </View>
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     );
   }
@@ -473,6 +492,16 @@ export default function HomeScreen() {
           onClose={handleCloseRecipeViewModal}
         />
       )}
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }

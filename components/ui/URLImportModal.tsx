@@ -10,12 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Clipboard,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Link, Clipboard as ClipboardIcon, Sparkles } from 'lucide-react-native';
 import Button from './Button';
+import ThemedAlert from './ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -34,14 +35,13 @@ export default function URLImportModal({
 }: URLImportModalProps) {
   const [url, setUrl] = useState('');
   const [hasClipboardContent, setHasClipboardContent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   // Check clipboard content when modal opens
   useEffect(() => {
     if (visible) {
       checkClipboard();
       setUrl('');
-      setError(null);
     }
   }, [visible]);
 
@@ -61,10 +61,13 @@ export default function URLImportModal({
       const clipboardContent = await Clipboard.getString();
       if (clipboardContent) {
         setUrl(clipboardContent);
-        setError(null);
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to access clipboard');
+      showAlert({
+        title: 'Clipboard Error',
+        message: 'Unable to access clipboard',
+        type: 'error',
+      });
     }
   };
 
@@ -79,28 +82,38 @@ export default function URLImportModal({
 
   const handleImport = async () => {
     if (!url.trim()) {
-      setError('Please enter a URL');
+      showAlert({
+        title: 'Missing URL',
+        message: 'Please enter a URL',
+        type: 'warning',
+      });
       return;
     }
 
     if (!validateUrl(url.trim())) {
-      setError('Please enter a valid URL (must start with http:// or https://)');
+      showAlert({
+        title: 'Invalid URL',
+        message: 'Please enter a valid URL (must start with http:// or https://)',
+        type: 'warning',
+      });
       return;
     }
 
     try {
-      setError(null);
       await onImport(url.trim());
       setUrl('');
       onClose();
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to import recipe');
+      showAlert({
+        title: 'Import Failed',
+        message: error instanceof Error ? error.message : 'Failed to import recipe',
+        type: 'error',
+      });
     }
   };
 
   const handleClose = () => {
     setUrl('');
-    setError(null);
     onClose();
   };
 
@@ -155,13 +168,10 @@ export default function URLImportModal({
                 <Text style={styles.inputLabel}>Recipe URL</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
-                    style={[styles.input, error && styles.inputError]}
+                    style={styles.input}
                     placeholder="https://example.com/recipe"
                     value={url}
-                    onChangeText={(text) => {
-                      setUrl(text);
-                      if (error) setError(null);
-                    }}
+                    onChangeText={setUrl}
                     autoCapitalize="none"
                     autoCorrect={false}
                     keyboardType="url"
@@ -180,10 +190,6 @@ export default function URLImportModal({
                     </TouchableOpacity>
                   )}
                 </View>
-                
-                {error && (
-                  <Text style={styles.errorText}>{error}</Text>
-                )}
 
                 {hasClipboardContent && !url && (
                   <TouchableOpacity
@@ -262,6 +268,16 @@ export default function URLImportModal({
             />
           </View>
         </KeyboardAvoidingView>
+
+        {/* Themed Alert */}
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -359,9 +375,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  inputError: {
-    borderColor: '#EF4444',
-  },
   pasteButton: {
     position: 'absolute',
     right: 16,
@@ -372,12 +385,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3F2',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  errorText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#EF4444',
-    marginTop: 4,
   },
   clipboardSuggestion: {
     flexDirection: 'row',

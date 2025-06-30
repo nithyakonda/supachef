@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   Dimensions,
   TextInput,
   Linking,
@@ -16,6 +15,8 @@ import { ChevronLeft, Heart, Pencil, Trash2, Clock, Users, Star, ChefHat, Flame,
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import ThemedAlert from '@/components/ui/ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import { Recipe } from '@/types';
 import { recipeService } from '@/services/recipeService';
 
@@ -136,6 +137,7 @@ export default function RecipeDetailScreen() {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedTags, setEditedTags] = useState<string[]>([]);
   const [editedNotes, setEditedNotes] = useState('');
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   // Load recipe data when screen comes into focus
   const loadRecipe = async () => {
@@ -150,13 +152,21 @@ export default function RecipeDetailScreen() {
         setEditedTags(recipeData.tags);
         setEditedNotes(recipeData.notes || '');
       } else {
-        Alert.alert('Error', 'Recipe not found');
-        router.back();
+        showAlert({
+          title: 'Recipe Not Found',
+          message: 'The recipe you\'re looking for could not be found.',
+          type: 'error',
+          buttons: [{ text: 'Go Back', onPress: () => router.back() }],
+        });
       }
     } catch (error) {
       console.error('Error loading recipe:', error);
-      Alert.alert('Error', 'Failed to load recipe');
-      router.back();
+      showAlert({
+        title: 'Error Loading Recipe',
+        message: 'Failed to load the recipe. Please try again.',
+        type: 'error',
+        buttons: [{ text: 'Go Back', onPress: () => router.back() }],
+      });
     } finally {
       setLoading(false);
     }
@@ -181,10 +191,11 @@ export default function RecipeDetailScreen() {
   const handleDelete = () => {
     if (!recipe) return;
 
-    Alert.alert(
-      'Delete Recipe',
-      'Are you sure you want to delete this recipe? This action cannot be undone.',
-      [
+    showAlert({
+      title: 'Delete Recipe',
+      message: 'Are you sure you want to delete this recipe? This action cannot be undone.',
+      type: 'warning',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -194,12 +205,16 @@ export default function RecipeDetailScreen() {
               await recipeService.deleteRecipe(recipe.id);
               router.back();
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete recipe');
+              showAlert({
+                title: 'Delete Failed',
+                message: 'Failed to delete the recipe. Please try again.',
+                type: 'error',
+              });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleToggleFavorite = async () => {
@@ -212,7 +227,11 @@ export default function RecipeDetailScreen() {
         setRecipe(updatedRecipe);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to update favorite status');
+      showAlert({
+        title: 'Update Failed',
+        message: 'Failed to update favorite status. Please try again.',
+        type: 'error',
+      });
     }
   };
 
@@ -224,10 +243,18 @@ export default function RecipeDetailScreen() {
       if (supported) {
         await Linking.openURL(recipe.source);
       } else {
-        Alert.alert('Error', 'Cannot open this URL');
+        showAlert({
+          title: 'Cannot Open Link',
+          message: 'This URL cannot be opened on your device.',
+          type: 'error',
+        });
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to open URL');
+      showAlert({
+        title: 'Error Opening Link',
+        message: 'Failed to open the URL. Please try again.',
+        type: 'error',
+      });
     }
   };
 
@@ -240,7 +267,11 @@ export default function RecipeDetailScreen() {
       setRecipe(updatedRecipe);
       setIsEditingTags(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to update tags');
+      showAlert({
+        title: 'Update Failed',
+        message: 'Failed to update tags. Please try again.',
+        type: 'error',
+      });
     }
   };
 
@@ -253,7 +284,11 @@ export default function RecipeDetailScreen() {
       setRecipe(updatedRecipe);
       setIsEditingNotes(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to update notes');
+      showAlert({
+        title: 'Update Failed',
+        message: 'Failed to update notes. Please try again.',
+        type: 'error',
+      });
     }
   };
 
@@ -302,6 +337,14 @@ export default function RecipeDetailScreen() {
           <Text style={styles.errorText}>Recipe not found</Text>
           <Button title="Go Back" onPress={handleBack} />
         </View>
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     );
   }
@@ -523,6 +566,16 @@ export default function RecipeDetailScreen() {
           <Pencil size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }

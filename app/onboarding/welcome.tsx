@@ -5,12 +5,13 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
+import ThemedAlert from '@/components/ui/ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import { supabase } from '@/utils/supabase';
 
 export default function WelcomeScreen() {
@@ -21,7 +22,7 @@ export default function WelcomeScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   // Set initial mode based on URL parameter
   useEffect(() => {
@@ -32,16 +33,23 @@ export default function WelcomeScreen() {
 
   const handleSubmit = async () => {
     if (!name && !isLogin) {
-      setAuthError('Please enter your name');
+      showAlert({
+        title: 'Missing Information',
+        message: 'Please enter your name',
+        type: 'warning',
+      });
       return;
     }
     if (!email || !password) {
-      setAuthError('Please fill in all fields');
+      showAlert({
+        title: 'Missing Information',
+        message: 'Please fill in all fields',
+        type: 'warning',
+      });
       return;
     }
 
     setLoading(true);
-    setAuthError(null);
 
     try {
       if (isLogin) {
@@ -52,13 +60,27 @@ export default function WelcomeScreen() {
         });
 
         if (error) {
-          setAuthError(error.message);
+          showAlert({
+            title: 'Sign In Failed',
+            message: error.message,
+            type: 'error',
+          });
           return;
         }
 
         if (data.user) {
           // Successfully signed in, go to main app
-          router.replace('/(tabs)');
+          showAlert({
+            title: 'Welcome Back!',
+            message: 'You have successfully signed in.',
+            type: 'success',
+            buttons: [
+              {
+                text: 'Continue',
+                onPress: () => router.replace('/(tabs)'),
+              },
+            ],
+          });
         }
       } else {
         // Sign up new user
@@ -73,20 +95,38 @@ export default function WelcomeScreen() {
         });
 
         if (error) {
-          setAuthError(error.message);
+          showAlert({
+            title: 'Sign Up Failed',
+            message: error.message,
+            type: 'error',
+          });
           return;
         }
 
         if (data.user) {
           // Successfully signed up, go to preferences setup with user ID
-          router.push({
-            pathname: '/onboarding/preferences',
-            params: { userId: data.user.id }
+          showAlert({
+            title: 'Account Created',
+            message: 'Your account has been created successfully! Let\'s set up your preferences.',
+            type: 'success',
+            buttons: [
+              {
+                text: 'Continue',
+                onPress: () => router.push({
+                  pathname: '/onboarding/preferences',
+                  params: { userId: data.user.id }
+                }),
+              },
+            ],
           });
         }
       }
     } catch (error) {
-      setAuthError('An unexpected error occurred. Please try again.');
+      showAlert({
+        title: 'Error',
+        message: 'An unexpected error occurred. Please try again.',
+        type: 'error',
+      });
       console.error('Authentication error:', error);
     } finally {
       setLoading(false);
@@ -103,7 +143,6 @@ export default function WelcomeScreen() {
     setName('');
     setEmail('');
     setPassword('');
-    setAuthError(null);
   };
 
   return (
@@ -131,13 +170,6 @@ export default function WelcomeScreen() {
               : 'Create your account to begin your culinary journey'
             }
           </Text>
-
-          {/* Error Message */}
-          {authError && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{authError}</Text>
-            </View>
-          )}
 
           <View style={styles.inputContainer}>
             {!isLogin && (
@@ -228,6 +260,16 @@ export default function WelcomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }
@@ -279,21 +321,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 32,
     lineHeight: 24,
-  },
-  errorContainer: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#DC2626',
-    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 32,

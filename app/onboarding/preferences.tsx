@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
+import ThemedAlert from '@/components/ui/ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import { cuisineOptions, dietaryRestrictions, mealTypes, weekDays } from '@/data/sampleData';
 import { preferenceService } from '@/services/preferenceService';
 
@@ -35,6 +36,7 @@ export default function PreferencesScreen() {
   const [addingToCategory, setAddingToCategory] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
   const [customOptions, setCustomOptions] = useState({
     cuisines: [] as string[],
     dietary: [] as string[],
@@ -68,7 +70,18 @@ export default function PreferencesScreen() {
         
         if (!canSave) {
           if (reason === 'Email not confirmed') {
-            setError('Please check your email and confirm your account before completing setup. You can also complete setup later from the settings page.');
+            showAlert({
+              title: 'Email Confirmation Required',
+              message: 'Please check your email and confirm your account before completing setup. You can also complete setup later from the settings page.',
+              type: 'warning',
+              buttons: [
+                {
+                  text: 'Skip for now',
+                  style: 'cancel',
+                  onPress: () => router.push('/onboarding/complete'),
+                }
+              ],
+            });
             setLoading(false);
             return;
           } else {
@@ -114,7 +127,22 @@ export default function PreferencesScreen() {
           }
         }
         
-        setError(errorMessage);
+        showAlert({
+          title: 'Error Saving Preferences',
+          message: errorMessage,
+          type: 'error',
+          buttons: [
+            {
+              text: 'Try Again',
+              style: 'default',
+            },
+            {
+              text: 'Skip for now',
+              style: 'cancel',
+              onPress: () => router.push('/onboarding/complete'),
+            }
+          ],
+        });
       } finally {
         setLoading(false);
       }
@@ -178,7 +206,11 @@ export default function PreferencesScreen() {
 
   const handleAddNewItem = () => {
     if (!newItemText.trim()) {
-      Alert.alert('Error', 'Please enter a valid option');
+      showAlert({
+        title: 'Invalid Input',
+        message: 'Please enter a valid option',
+        type: 'warning',
+      });
       return;
     }
 
@@ -195,7 +227,11 @@ export default function PreferencesScreen() {
     }
     
     if (existingOptions.some(option => option.toLowerCase() === trimmedText.toLowerCase())) {
-      Alert.alert('Error', 'This option already exists');
+      showAlert({
+        title: 'Duplicate Option',
+        message: 'This option already exists',
+        type: 'warning',
+      });
       return;
     }
 
@@ -554,21 +590,6 @@ export default function PreferencesScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {renderCurrentStep()}
-        
-        {/* Error message display */}
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            {error.includes('email') && (
-              <TouchableOpacity 
-                style={styles.skipButton}
-                onPress={() => router.push('/onboarding/complete')}
-              >
-                <Text style={styles.skipButtonText}>Skip for now</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -583,6 +604,16 @@ export default function PreferencesScreen() {
       </View>
 
       {renderAddModal()}
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }

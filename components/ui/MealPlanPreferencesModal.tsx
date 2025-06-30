@@ -6,12 +6,13 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, ChevronRight } from 'lucide-react-native';
 import Button from './Button';
 import Chip from './Chip';
+import ThemedAlert from './ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import { preferenceService } from '@/services/preferenceService';
 import { cuisineOptions, dietaryRestrictions, mealTypes, weekDays } from '@/data/sampleData';
 
@@ -53,6 +54,7 @@ export default function MealPlanPreferencesModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPreferences, setLoadingPreferences] = useState(true);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   useEffect(() => {
     if (visible) {
@@ -80,6 +82,11 @@ export default function MealPlanPreferencesModal({
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
+      showAlert({
+        title: 'Error Loading Preferences',
+        message: 'Failed to load your preferences. Please try again.',
+        type: 'error',
+      });
     } finally {
       setLoadingPreferences(false);
     }
@@ -91,10 +98,18 @@ export default function MealPlanPreferencesModal({
       await preferenceService.saveUserPreferences(preferences);
       onPreferencesUpdated();
       onClose();
-      Alert.alert('Success', 'Meal plan preferences updated successfully!');
+      showAlert({
+        title: 'Preferences Updated',
+        message: 'Meal plan preferences updated successfully!',
+        type: 'success',
+      });
     } catch (error) {
       console.error('Error saving preferences:', error);
-      Alert.alert('Error', 'Failed to save preferences. Please try again.');
+      showAlert({
+        title: 'Save Failed',
+        message: 'Failed to save preferences. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -158,6 +173,14 @@ export default function MealPlanPreferencesModal({
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Loading preferences...</Text>
           </View>
+          <ThemedAlert
+            visible={alertState.visible}
+            title={alertState.title}
+            message={alertState.message}
+            type={alertState.type}
+            buttons={alertState.buttons}
+            onClose={hideAlert}
+          />
         </SafeAreaView>
       </Modal>
     );
@@ -375,6 +398,16 @@ export default function MealPlanPreferencesModal({
             disabled={isLoading}
           />
         </View>
+
+        {/* Themed Alert */}
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     </Modal>
   );

@@ -6,12 +6,13 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Star, Heart } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Button from '@/components/ui/Button';
+import ThemedAlert from '@/components/ui/ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import { Recipe } from '@/types';
 import { recipeService } from '@/services/recipeService';
 
@@ -35,6 +36,7 @@ export default function AddEditRecipeScreen() {
   const { recipeId } = useLocalSearchParams<{ recipeId?: string }>();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
   const [formData, setFormData] = useState<RecipeFormData>({
     title: '',
     description: '',
@@ -82,13 +84,21 @@ export default function AddEditRecipeScreen() {
           isFavorite: recipe.isFavorite,
         });
       } else {
-        Alert.alert('Error', 'Recipe not found');
-        router.back();
+        showAlert({
+          title: 'Recipe Not Found',
+          message: 'The recipe you\'re trying to edit could not be found.',
+          type: 'error',
+          buttons: [{ text: 'Go Back', onPress: () => router.back() }],
+        });
       }
     } catch (error) {
       console.error('Error loading recipe:', error);
-      Alert.alert('Error', 'Failed to load recipe');
-      router.back();
+      showAlert({
+        title: 'Error Loading Recipe',
+        message: 'Failed to load the recipe for editing. Please try again.',
+        type: 'error',
+        buttons: [{ text: 'Go Back', onPress: () => router.back() }],
+      });
     } finally {
       setLoading(false);
     }
@@ -96,7 +106,11 @@ export default function AddEditRecipeScreen() {
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter a recipe title');
+      showAlert({
+        title: 'Missing Title',
+        message: 'Please enter a recipe title before saving.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -138,14 +152,28 @@ export default function AddEditRecipeScreen() {
 
       if (isEditing) {
         await recipeService.updateRecipe(recipeData);
+        showAlert({
+          title: 'Recipe Updated',
+          message: 'Your recipe has been successfully updated!',
+          type: 'success',
+          buttons: [{ text: 'OK', onPress: () => router.back() }],
+        });
       } else {
         await recipeService.saveRecipe(recipeData);
+        showAlert({
+          title: 'Recipe Saved',
+          message: 'Your new recipe has been successfully saved!',
+          type: 'success',
+          buttons: [{ text: 'OK', onPress: () => router.back() }],
+        });
       }
-
-      router.back();
     } catch (error) {
       console.error('Error saving recipe:', error);
-      Alert.alert('Error', 'Failed to save recipe');
+      showAlert({
+        title: 'Save Failed',
+        message: 'Failed to save the recipe. Please try again.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -181,6 +209,14 @@ export default function AddEditRecipeScreen() {
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading recipe...</Text>
         </View>
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     );
   }
@@ -395,6 +431,16 @@ export default function AddEditRecipeScreen() {
           disabled={loading}
         />
       </View>
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -16,6 +15,8 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
+import ThemedAlert from '@/components/ui/ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import ProfileImagePicker from '@/components/ui/ProfileImagePicker';
 import ProfileEditModal from '@/components/ui/ProfileEditModal';
 import MealPlanPreferencesModal from '@/components/ui/MealPlanPreferencesModal';
@@ -29,6 +30,7 @@ export default function SettingsScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   // Load user data
   useEffect(() => {
@@ -51,10 +53,11 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
+    showAlert({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      type: 'warning',
+      buttons: [
         {
           text: 'Cancel',
           style: 'cancel',
@@ -68,22 +71,30 @@ export default function SettingsScreen() {
               const { error } = await supabase.auth.signOut();
               
               if (error) {
-                Alert.alert('Error', 'Failed to sign out. Please try again.');
+                showAlert({
+                  title: 'Error',
+                  message: 'Failed to sign out. Please try again.',
+                  type: 'error',
+                });
                 console.error('Logout error:', error);
               } else {
                 // Navigate to onboarding/welcome screen
                 router.replace('/onboarding');
               }
             } catch (error) {
-              Alert.alert('Error', 'An unexpected error occurred during sign out.');
+              showAlert({
+                title: 'Error',
+                message: 'An unexpected error occurred during sign out.',
+                type: 'error',
+              });
               console.error('Logout error:', error);
             } finally {
               setIsLoggingOut(false);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleProfileImageUpdate = async (imageUri: string) => {
@@ -100,10 +111,18 @@ export default function SettingsScreen() {
       }
 
       setUserImageUri(imageUri);
-      Alert.alert('Success', 'Profile picture updated successfully!');
+      showAlert({
+        title: 'Success',
+        message: 'Profile picture updated successfully!',
+        type: 'success',
+      });
     } catch (error) {
       console.error('Error updating profile image:', error);
-      Alert.alert('Error', 'Failed to update profile picture. Please try again.');
+      showAlert({
+        title: 'Update Failed',
+        message: 'Failed to update profile picture. Please try again.',
+        type: 'error',
+      });
     }
   };
 
@@ -135,6 +154,14 @@ export default function SettingsScreen() {
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading settings...</Text>
         </View>
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     );
   }
@@ -249,6 +276,16 @@ export default function SettingsScreen() {
         onPreferencesUpdated={() => {
           // Optionally refresh any data that depends on preferences
         }}
+      />
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
       />
     </SafeAreaView>
   );

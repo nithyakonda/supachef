@@ -8,7 +8,6 @@ import {
   Image,
   TextInput,
   Modal,
-  Alert,
   Dimensions,
   FlatList,
 } from 'react-native';
@@ -19,6 +18,8 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
 import URLImportModal from '@/components/ui/URLImportModal';
+import ThemedAlert from '@/components/ui/ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import { Recipe } from '@/types';
 import { recipeService } from '@/services/recipeService';
 
@@ -89,6 +90,7 @@ export default function RecipesScreen() {
   const [isImporting, setIsImporting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   // Load recipes from Supabase on component mount and when screen comes into focus
   const loadRecipes = async () => {
@@ -162,7 +164,11 @@ export default function RecipesScreen() {
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      Alert.alert('Error', 'Failed to update favorite status');
+      showAlert({
+        title: 'Update Failed',
+        message: 'Failed to update favorite status. Please try again.',
+        type: 'error',
+      });
     }
   };
 
@@ -187,10 +193,11 @@ export default function RecipesScreen() {
   };
 
   const handleDeleteRecipe = async (recipeId: string) => {
-    Alert.alert(
-      'Delete Recipe',
-      'Are you sure you want to delete this recipe?',
-      [
+    showAlert({
+      title: 'Delete Recipe',
+      message: 'Are you sure you want to delete this recipe? This action cannot be undone.',
+      type: 'warning',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -199,13 +206,22 @@ export default function RecipesScreen() {
             try {
               await recipeService.deleteRecipe(recipeId);
               setRecipes(prev => prev.filter(r => r.id !== recipeId));
+              showAlert({
+                title: 'Recipe Deleted',
+                message: 'The recipe has been successfully deleted.',
+                type: 'success',
+              });
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete recipe');
+              showAlert({
+                title: 'Delete Failed',
+                message: 'Failed to delete the recipe. Please try again.',
+                type: 'error',
+              });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleImportFromUrl = async (url: string) => {
@@ -213,9 +229,13 @@ export default function RecipesScreen() {
     try {
       const importedRecipe = await recipeService.importFromUrl(url);
       setRecipes(prev => [importedRecipe, ...prev]);
-      Alert.alert('Success', 'Recipe imported successfully!');
+      showAlert({
+        title: 'Import Successful',
+        message: 'Recipe imported successfully! You can now view and edit it in your recipe book.',
+        type: 'success',
+      });
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to import recipe');
     } finally {
       setIsImporting(false);
     }
@@ -312,6 +332,14 @@ export default function RecipesScreen() {
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading your recipes...</Text>
         </View>
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     );
   }
@@ -328,6 +356,14 @@ export default function RecipesScreen() {
             style={styles.retryButton}
           />
         </View>
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     );
   }
@@ -512,6 +548,16 @@ export default function RecipesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }

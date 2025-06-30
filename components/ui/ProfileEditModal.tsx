@@ -9,11 +9,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import Button from './Button';
+import ThemedAlert from './ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import ProfileImagePicker from './ProfileImagePicker';
 import { supabase } from '@/utils/supabase';
 
@@ -38,6 +39,7 @@ export default function ProfileEditModal({
   const [email, setEmail] = useState(currentEmail);
   const [imageUri, setImageUri] = useState(currentImageUri);
   const [isLoading, setIsLoading] = useState(false);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
 
   React.useEffect(() => {
     if (visible) {
@@ -49,19 +51,31 @@ export default function ProfileEditModal({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
+      showAlert({
+        title: 'Missing Information',
+        message: 'Please enter your name',
+        type: 'warning',
+      });
       return;
     }
 
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+      showAlert({
+        title: 'Missing Information',
+        message: 'Please enter your email',
+        type: 'warning',
+      });
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showAlert({
+        title: 'Invalid Email',
+        message: 'Please enter a valid email address',
+        type: 'warning',
+      });
       return;
     }
 
@@ -83,13 +97,18 @@ export default function ProfileEditModal({
 
       onProfileUpdated(name, email, imageUri);
       onClose();
-      Alert.alert('Success', 'Profile updated successfully!');
+      showAlert({
+        title: 'Profile Updated',
+        message: 'Your profile has been updated successfully!',
+        type: 'success',
+      });
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert(
-        'Error',
-        error instanceof Error ? error.message : 'Failed to update profile. Please try again.'
-      );
+      showAlert({
+        title: 'Update Failed',
+        message: error instanceof Error ? error.message : 'Failed to update profile. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -198,6 +217,16 @@ export default function ProfileEditModal({
             />
           </View>
         </KeyboardAvoidingView>
+
+        {/* Themed Alert */}
+        <ThemedAlert
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          onClose={hideAlert}
+        />
       </SafeAreaView>
     </Modal>
   );

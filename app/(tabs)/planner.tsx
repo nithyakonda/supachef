@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, Camera, X, Sparkles } from 'lucide-react-native';
@@ -15,6 +14,8 @@ import { router } from 'expo-router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Chip from '@/components/ui/Chip';
+import ThemedAlert from '@/components/ui/ThemedAlert';
+import { useThemedAlert } from '@/hooks/useThemedAlert';
 import { weekDays, mealTypes, dietaryRestrictions } from '@/data/sampleData';
 import { aiService } from '@/services/aiService';
 import { mealPlanService } from '@/services/mealPlanService';
@@ -175,6 +176,7 @@ export default function PlannerScreen() {
   const [showPreferenceModal, setShowPreferenceModal] = useState(false);
   const [editingPreference, setEditingPreference] = useState<'currentWeek' | 'mealsPerDay' | 'dietaryRestrictions' | 'allergies' | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { alertState, showAlert, hideAlert } = useThemedAlert();
   const [preferences, setPreferences] = useState({
     currentWeek: weekDays, // Initialize with all days
     mealsPerDay: ['Breakfast', 'Lunch', 'Dinner'], // Initialize with default meals
@@ -185,7 +187,11 @@ export default function PlannerScreen() {
   const handleTakePhoto = () => {
     // Stub implementation - would open camera
     console.log('Opening camera for ingredient detection...');
-    Alert.alert('Camera Feature', 'Camera integration would be implemented here for ingredient detection.');
+    showAlert({
+      title: 'Camera Feature',
+      message: 'Camera integration would be implemented here for ingredient detection.',
+      type: 'info',
+    });
   };
 
   const handleManualEntry = () => {
@@ -220,7 +226,11 @@ export default function PlannerScreen() {
 
   const handleSubmitToAI = async () => {
     if (!manualIngredients.trim()) {
-      Alert.alert('Missing Ingredients', 'Please add some ingredients before generating a meal plan.');
+      showAlert({
+        title: 'Missing Ingredients',
+        message: 'Please add some ingredients before generating a meal plan.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -274,24 +284,25 @@ export default function PlannerScreen() {
       await mealPlanService.saveMealPlanFromAIResponse(aiResponse.data);
 
       // Show success message
-      Alert.alert(
-        'Meal Plan Generated!',
-        'Your AI-powered meal plan has been created successfully. Check your home screen to see your new meals.',
-        [
+      showAlert({
+        title: 'Meal Plan Generated!',
+        message: 'Your AI-powered meal plan has been created successfully. Check your home screen to see your new meals.',
+        type: 'success',
+        buttons: [
           {
             text: 'View Meal Plan',
             onPress: () => router.push('/(tabs)'),
           },
-        ]
-      );
+        ],
+      });
 
     } catch (error) {
       console.error('Error generating meal plan:', error);
-      Alert.alert(
-        'Generation Failed',
-        error instanceof Error ? error.message : 'Failed to generate meal plan. Please try again.',
-        [{ text: 'OK' }]
-      );
+      showAlert({
+        title: 'Generation Failed',
+        message: error instanceof Error ? error.message : 'Failed to generate meal plan. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -540,6 +551,16 @@ export default function PlannerScreen() {
           onClose={handlePreferenceModalClose}
         />
       )}
+
+      {/* Themed Alert */}
+      <ThemedAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }
