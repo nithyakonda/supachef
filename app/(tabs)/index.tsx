@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Pencil, Plus, User, Sparkles, Eye } from 'lucide-react-native';
+import { Pencil, Plus, User, Sparkles } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -398,9 +398,6 @@ export default function HomeScreen() {
                                           source={{ uri: meal.mealRecipes[0].imageUrl }}
                                           style={styles.recipeImage}
                                         />
-                                        <View style={styles.viewOverlay}>
-                                          <Eye size={16} color="#FFFFFF" />
-                                        </View>
                                       </TouchableOpacity>
                                       <View style={styles.recipeTextAndButtons}>
                                         <View style={styles.titleAndEditContainer}>
@@ -674,18 +671,6 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 12,
     marginRight: 16,
-  },
-  viewOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 16,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: 0.8,
   },
   recipeTextAndButtons: {
     flex: 1,
